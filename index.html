@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cylinder Text Animation</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=DotGothic16&family=Shippori+Mincho:wght@400;700&family=Zen+Maru+Gothic:wght@400;700&display=swap">
+  <style>
+    :root {
+      --bg: #eef1f6;
+      --ink: #1b2a4a;
+      --panel: rgba(255, 255, 255, .88);
+      --line: #c5cddc;
+      --accent: #2f5fd0;
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f1b30;
+        --ink: #f1e7cf;
+        --panel: rgba(20, 34, 58, .9);
+        --line: #2d4266;
+        --accent: #f2b45a;
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg: #0f1b30;
+      --ink: #f1e7cf;
+      --panel: rgba(20, 34, 58, .9);
+      --line: #2d4266;
+      --accent: #f2b45a;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    /* ===== scene ===== */
+    .scene {
+      position: absolute;
+      inset: 0 0 var(--avoid, 0px) 0;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .stage {
+      transform-origin: center;
+    }
+
+    .ring {
+      position: relative;
+      width: 0;
+      height: 0;
+      transform-style: preserve-3d;
+    }
+
+    .row {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      transform-style: preserve-3d;
+    }
+
+    .ch {
+      position: absolute;
+      left: 0;
+      top: 0;
+      white-space: pre;
+      line-height: 1;
+      color: var(--tc, var(--ink));
+      will-change: transform, opacity;
+      -webkit-text-stroke: var(--sw, 0px) var(--sc, transparent);
+      paint-order: stroke fill;
+      backface-visibility: visible;
+    }
+
+    .hide-back .ch {
+      backface-visibility: hidden;
+    }
+
+    /* ===== Control panel ===== */
+    .panel {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      max-width: 560px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      font-size: 14px;
+      z-index: 5;
+    }
+
+    .panel summary {
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .panel summary:focus-visible,
+    .panel button:focus-visible,
+    .panel input:focus-visible,
+    .panel select:focus-visible,
+    .panel textarea:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .fields {
+      padding: 0 16px 14px;
+      display: grid;
+      gap: 10px;
+      max-height: 42vh;
+      overflow-y: auto;
+    }
+
+    .f {
+      display: grid;
+      grid-template-columns: 7.5em 1fr 4.6em;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .f input[type=number] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 4px 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .f.wide {
+      grid-template-columns: 7.5em 1fr;
+    }
+
+    .f input[type=text] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .f textarea {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      line-height: 1.4;
+      resize: vertical;
+    }
+
+    .f input[type=range] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .f input[type=color] {
+      justify-self: start;
+      width: 3.4em;
+      height: 2em;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .f select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .presets {
+      display: grid;
+      gap: 8px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .presets .prow {
+      display: flex;
+      gap: 8px;
+    }
+
+    .presets .prow> :first-child {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .presets select,
+    .presets input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .presets select {
+      background: var(--bg);
+    }
+
+    .presets button {
+      padding: 6px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .presets .status {
+      min-height: 1.2em;
+      font-size: 12px;
+      opacity: .8;
+    }
+
+    .namedlg {
+      width: min(320px, calc(100vw - 32px));
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .namedlg::backdrop {
+      background: rgba(0, 0, 0, .45);
+    }
+
+    .namedlg form {
+      display: grid;
+      gap: 10px;
+    }
+
+    .namedlg input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .namedlg .hint {
+      min-height: 1.2em;
+      font-size: 12px;
+      opacity: .8;
+    }
+
+    .namedlg .acts {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .namedlg button {
+      padding: 6px 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .namedlg button[type=submit] {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+
+    .btns button {
+      flex: 1 1 10em;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ch {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="scene">
+    <div class="stage" id="stage">
+      <div class="ring" id="ring"></div>
+    </div>
+  </main>
+  <details class="panel" id="panel">
+    <summary>Settings</summary>
+    <div class="fields" id="fields"></div>
+  </details>
+  <script>
+    /* =========================================================
+       Settings (customize by editing these values)
+       ========================================================= */
+    /* Font suggestions for the input field; any installed font name can also be entered directly. */
+    const FONT_PRESETS = ["Zen Maru Gothic", "Shippori Mincho", "Dela Gothic One", "DotGothic16", "Hiragino Sans", "Hiragino Mincho ProN",
+      "Yu Gothic", "Yu Mincho", "Meiryo", "Noto Sans JP", "Arial", "Georgia", "Impact", "Courier New", "Segoe Script"];
+
+    const DEFAULTS = {
+      text: "CYLINDER TEXT\nANIMATION",   // Multiple lines are allowed (one row per line).
+      separator: "   ✦   ",   // Separator used when repeating the text.
+      repeat: true,           // Repeat the text until it fills the circumference.
+      radius: 220,            // Cylinder radius (px).
+      fontSize: 40,           // Font size (px).
+      letterSpacing: 0.1,     // Letter spacing (em).
+      fontFamily: "Arial",    // Comma-separated font family names are supported.
+      fontWeight: 700,
+      textColor: "#f1e7cf",   // Text color.
+      strokeColor: "#f2b45a", // Outline color.
+      strokeWidth: 0,         // Outline width (px); 0 disables the outline.
+      bgColor: "#0f1b30",     // Background color.
+      speed: -40,             // Rotation speed (degrees/second); negative values reverse direction.
+      tiltX: 18,              // Front/back tilt (degrees); positive values tilt the top away.
+      tiltZ: -8,              // Side-to-side tilt (degrees).
+      perspective: 900,       // Perspective strength (px); smaller values create a stronger effect.
+      rowGap: 1.4,            // Spacing between rows (multiples of font size).
+      alternate: true,        // Alternate rotation direction between rows.
+      depthScale: 0.2,        // Additional size reduction for distant text (0-0.9).
+      minOpacity: 0.12,       // Opacity at the farthest point.
+      fade: 1.5,              // Fade curve toward the back; larger values fade faster.
+      backVisible: true,      // Show the back of the cylinder (mirrored text).
+      paused: false
+    };
+    const CFG = { ...DEFAULTS };
+
+    /* UI definitions: rebuild=true marks settings that require rebuilding the text layout. */
+    const UI = [
+      { k: "text", label: "Text", type: "text", multiline: true, rebuild: true },
+      { k: "separator", label: "Separator", type: "text", rebuild: true },
+      { k: "fontFamily", label: "Font", type: "text", list: FONT_PRESETS, rebuild: true },
+      { k: "fontWeight", label: "Weight", min: 100, max: 900, step: 100, rebuild: true },
+      { k: "textColor", label: "Text color", type: "color" },
+      { k: "strokeColor", label: "Outline color", type: "color" },
+      { k: "strokeWidth", label: "Outline width", min: 0, max: 8, step: 0.5 },
+      { k: "bgColor", label: "Background", type: "color" },
+      { k: "speed", label: "Rotation speed", min: -180, max: 180, step: 1 },
+      { k: "tiltX", label: "Tilt (front/back)", min: -90, max: 90, step: 1 },
+      { k: "tiltZ", label: "Tilt (side)", min: -90, max: 90, step: 1 },
+      { k: "perspective", label: "Perspective", min: 300, max: 1000, step: 10 },
+      { k: "depthScale", label: "Shrink distant text", min: 0, max: 0.9, step: 0.01 },
+      { k: "minOpacity", label: "Distant opacity", min: 0, max: 1, step: 0.01 },
+      { k: "radius", label: "Radius", min: 50, max: 500, step: 1, rebuild: true },
+      { k: "fontSize", label: "Font size", min: 16, max: 96, step: 1, rebuild: true },
+      { k: "letterSpacing", label: "Letter spacing", min: 0, max: 1, step: 0.01, rebuild: true },
+      { k: "rowGap", label: "Row gap", min: 0.8, max: 3, step: 0.05, rebuild: true },
+      { k: "repeat", label: "Repeat", type: "bool", rebuild: true },
+      { k: "alternate", label: "Alternate direction per row", type: "bool" },
+      { k: "backVisible", label: "Show back side", type: "bool" },
+      { k: "paused", label: "Pause", type: "bool" }
+    ];
+
+    /* =========================================================
+       Main logic
+       ========================================================= */
+    /* Use Japanese when the browser's preferred language is Japanese; otherwise use English. */
+    const JA = /^ja/i.test(navigator.languages?.[0] || navigator.language || "en");
+    const JA_TRANSLATIONS = {
+      "Cylinder Text Animation": "円柱テキスト アニメーション",
+      "Settings": "設定", "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
+      "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
+      "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
+      "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
+      "Row gap": "段の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "段ごとに逆回転",
+      "Show back side": "裏側を表示", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
+      "Load installed fonts": "インストール済みフォントを読み込む", "Loaded": "読み込み済み",
+      "Couldn't access installed fonts": "フォント一覧を取得できませんでした",
+      "Any installed font name (e.g. Arial)": "インストール済みフォント名を入力（例: Meiryo）",
+      "Presets": "プリセット", "Select a preset": "プリセットを選択", "Preset name": "プリセット名", "Save": "保存", "Delete": "削除", "Cancel": "キャンセル", "This will overwrite the existing preset": "同じ名前のプリセットを上書きします",
+      "Saved": "保存しました", "Deleted": "削除しました", "Loaded preset": "読み込みました",
+      "This browser cannot save presets": "このブラウザには保存できません"
+    };
+    const tr = s => JA ? (JA_TRANSLATIONS[s] ?? s) : s;
+    document.documentElement.lang = JA ? "ja" : "en";
+    document.title = tr("Cylinder Text Animation");
+    const $ = id => document.getElementById(id);
+    $("panel").firstElementChild.textContent = tr("Settings");
+    const ring = $("ring"), stage = $("stage");
+    const ctx = document.createElement("canvas").getContext("2d");
+    let rowsData = [], spin = 0, last = performance.now();
+
+    function build() {
+      ring.innerHTML = ""; rowsData = [];
+      const { radius: R, fontSize: fs, letterSpacing: ls, fontWeight: fw } = CFG;
+      const family = familyCss(CFG.fontFamily);
+      ring.style.fontFamily = family;
+      ctx.font = `${fw} ${fs}px ${family}`;
+
+      const lines = CFG.text.split("\n");   // One line becomes one row.
+      const C = 2 * Math.PI * R;
+
+      for (let r = 0; r < lines.length; r++) {
+        // Calculate character widths and repetitions for each line; empty lines remain empty rows.
+        const unit = lines[r] === "" ? [] : Array.from(lines[r] + (CFG.repeat ? CFG.separator : ""));
+        const widths = unit.map(c => ctx.measureText(c).width + ls * fs);
+        const unitW = widths.reduce((a, b) => a + b, 0) || 1;
+        const n = CFG.repeat ? Math.max(1, Math.round(C / unitW)) : 1;
+        const k = CFG.repeat ? C / (n * unitW) : 1;   // Adjust spacing to fit the circumference exactly.
+        const row = document.createElement("div");
+        row.className = "row";
+        const y = (r - (lines.length - 1) / 2) * fs * CFG.rowGap;
+        row.style.transform = `translateY(${y}px)`;
+        const chars = [];
+        let cum = CFG.repeat ? 0 : -unitW / 2;      // Center the text at the front when repetition is off.
+        for (let i = 0; i < n; i++) {
+          unit.forEach((ch, j) => {
+            const el = document.createElement("span");
+            el.className = "ch";
+            el.textContent = ch === " " ? "\u00a0" : ch;
+            el.style.fontSize = fs + "px";
+            el.style.fontWeight = fw;
+            row.appendChild(el);
+            chars.push({ el, a: (cum + widths[j] / 2) * k / R });
+            cum += widths[j];
+          });
+        }
+        ring.appendChild(row);
+        rowsData.push({ y, chars, phase: r * 0.35 });
+      }
+      fit();
+    }
+
+    // Rebuild the layout after fonts load to ensure accurate text-width measurements.
+    function rebuild() {
+      const spec = `${CFG.fontWeight} ${CFG.fontSize}px ${familyCss(CFG.fontFamily)}`;
+      const loading = document.fonts ? document.fonts.load(spec, CFG.text + CFG.separator) : Promise.resolve();
+      loading.catch(() => { }).then(build);
+    }
+
+    // Add quotes and a fallback when a single font name is provided.
+    function familyCss(v) {
+      v = (v || "").trim();
+      if (!v) return "sans-serif";
+      return /[,"']/.test(v) ? v : `"${v}",sans-serif`;
+    }
+
+    // Keep the perspective distance above the radius so text does not pass behind the camera.
+    const persp = () => Math.max(CFG.perspective, CFG.radius * 1.3 + CFG.fontSize);
+
+    // Available display area, updated by ResizeObserver.
+    let avail = { w: innerWidth, h: innerHeight };
+
+    // Scale the entire scene to fit the available display area.
+    function fit() {
+      const R = CFG.radius, fs = CFG.fontSize, P = persp();
+      const tx = CFG.tiltX * Math.PI / 180, tz = CFG.tiltZ * Math.PI / 180;
+      const k = P / (P - R);   // Magnification at the frontmost point.
+      const w0 = (2 * R + fs * 2) * k + 40;
+      const h0 = (Math.max(0, CFG.text.split("\n").length - 1) * fs * CFG.rowGap + 2 * R * Math.abs(Math.sin(tx)) + fs * 2) * k + 40;
+      const w = w0 * Math.abs(Math.cos(tz)) + h0 * Math.abs(Math.sin(tz));
+      const h = w0 * Math.abs(Math.sin(tz)) + h0 * Math.abs(Math.cos(tz));
+      stage.style.transform = `scale(${Math.min(1, avail.w / w, avail.h / h)})`;
+    }
+
+    function frame(now) {
+      const dt = Math.min(0.1, (now - last) / 1000); last = now;
+      if (!CFG.paused) spin += CFG.speed * dt * Math.PI / 180;
+
+      const R = CFG.radius, rad = Math.PI / 180;
+      const tx = -CFG.tiltX * rad, cosT = Math.cos(tx), sinT = Math.sin(tx);
+      stage.style.perspective = persp() + "px";   // Perspective must be set on the ring's direct parent.
+      fit();
+      ring.style.transform = `rotateZ(${CFG.tiltZ}deg) rotateX(${-CFG.tiltX}deg)`;
+      document.body.classList.toggle("hide-back", !CFG.backVisible);
+      document.body.style.background = CFG.bgColor;
+      ring.style.setProperty("--tc", CFG.textColor);
+      ring.style.setProperty("--sc", CFG.strokeColor);
+      ring.style.setProperty("--sw", CFG.strokeWidth + "px");
+
+      rowsData.forEach((row, r) => {
+        const dir = CFG.alternate && r % 2 ? -1 : 1;
+        const base = dir * spin + row.phase;
+        for (const c of row.chars) {
+          const th = c.a + base;
+          // Depth after tilt is applied (1 = frontmost, 0 = farthest).
+          const z = row.y * sinT + R * Math.cos(th) * cosT;
+          const d = Math.max(0, Math.min(1, (z / R + 1) / 2));
+          const s = 1 - CFG.depthScale * (1 - d);
+          c.el.style.opacity = CFG.minOpacity + (1 - CFG.minOpacity) * Math.pow(d, CFG.fade);
+          c.el.style.transform = `translate(-50%,-50%) rotateY(${th}rad) translateZ(${R}px) scale(${s})`;
+        }
+      });
+      requestAnimationFrame(frame);
+    }
+
+    /* ---- Build the control panel ---- */
+    const fields = $("fields");
+    const inputs = {};
+    UI.forEach(u => {
+      const wrap = document.createElement("div");
+      wrap.className = "f" + (u.type ? " wide" : "");
+      const name = document.createElement(u.type === "color" ? "span" : "label");
+      name.textContent = tr(u.label);
+      if (u.type !== "color") name.htmlFor = "f-" + u.k;   // Do not associate color pickers with labels to avoid opening them across the whole row.
+      const inp = document.createElement(u.type === "select" ? "select" : u.multiline ? "textarea" : "input");
+      inp.id = "f-" + u.k;
+      let out = null;
+      if (u.type === "select") { u.options.forEach(o => inp.add(new Option(o.label, o.value))); inp.value = CFG[u.k]; }
+      else if (u.type === "color") { inp.type = "color"; inp.value = CFG[u.k]; }
+      else if (u.type === "text") {
+        if (u.multiline) { inp.rows = 3; inp.placeholder = tr("Each line becomes one row"); } else inp.type = "text";
+        inp.value = CFG[u.k];
+        if (u.k === "fontFamily") inp.placeholder = tr("Any installed font name (e.g. Arial)");
+        if (u.list) {
+          inp.setAttribute("list", "dl-" + u.k);
+          const dl = document.createElement("datalist"); dl.id = "dl-" + u.k;
+          u.list.forEach(n => dl.appendChild(new Option(n)));
+          fields.appendChild(dl);
+        }
+      }
+      else if (u.type === "bool") { inp.type = "checkbox"; inp.checked = CFG[u.k]; inp.style.justifySelf = "start"; }
+      else { inp.type = "range"; inp.min = u.min; inp.max = u.max; inp.step = u.step; inp.value = CFG[u.k]; out = document.createElement("input"); out.type = "number"; out.min = u.min; out.max = u.max; out.step = u.step; out.value = CFG[u.k]; out.setAttribute("aria-label", tr(u.label)); }
+      inp.addEventListener("input", () => {
+        CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
+        if (out && document.activeElement !== out) out.value = CFG[u.k];   // Do not overwrite the value while it is being edited.
+        if (u.rebuild) (u.k === "fontFamily" || u.type === "text" ? rebuild() : build());
+      });
+      if (out) {
+        // Clamp numeric input to the allowed range, apply it through the slider, and normalize it on change.
+        out.addEventListener("input", () => {
+          const v = parseFloat(out.value);
+          if (!isFinite(v)) return;
+          inp.value = Math.min(u.max, Math.max(u.min, v));
+          inp.dispatchEvent(new Event("input"));
+        });
+        out.addEventListener("change", () => { out.value = CFG[u.k]; });
+      }
+      inputs[u.k] = { inp, out, u };
+      wrap.append(name, inp); if (out) wrap.append(out);
+      fields.appendChild(wrap);
+    });
+    const btns = document.createElement("div"); btns.className = "btns";
+    const reset = document.createElement("button"); reset.textContent = tr("Reset to defaults");
+    reset.onclick = () => {
+      Object.assign(CFG, DEFAULTS);
+      for (const k in inputs) {
+        const { inp, out, u } = inputs[k];
+        if (u.type === "bool") inp.checked = CFG[k]; else inp.value = CFG[k];
+        if (out) out.value = CFG[k];
+      }
+      rebuild();
+    };
+    // Load installed fonts in browsers that support the Local Font Access API.
+    if ("queryLocalFonts" in window) {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = tr("Load installed fonts");
+      b.onclick = async () => {
+        try {
+          const names = [...new Set((await window.queryLocalFonts()).map(f => f.family))].sort();
+          const dl = $("dl-fontFamily"); dl.innerHTML = "";
+          FONT_PRESETS.concat(names).forEach(n => dl.appendChild(new Option(n)));
+          b.textContent = tr("Loaded") + ` (${names.length})`;
+        } catch (e) { b.textContent = tr("Couldn't access installed fonts"); }
+      };
+      btns.appendChild(b);
+    }
+    /* ---- Save and load presets with localStorage; use JSON import/export as a fallback when unavailable. ---- */
+    const STORE_KEY = "cylinderTextPresets";
+    let presets = {}, persisted = true;
+    try { presets = JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {}; } catch (e) { persisted = false; }
+    const has = n => Object.prototype.hasOwnProperty.call(presets, n);
+    const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(presets)); persisted = true; } catch (e) { persisted = false; } };
+    const snapshot = () => Object.fromEntries(UI.map(u => [u.k, CFG[u.k]]));
+
+    function applySettings(obj) {
+      for (const u of UI) {
+        let v = obj[u.k];
+        const t = u.type === "bool" ? "boolean" : ["text", "color", "select"].includes(u.type) ? "string" : "number";
+        if (typeof v !== t || (t === "number" && !isFinite(v))) continue;   // Ignore invalid values.
+        if (t === "number") v = Math.min(u.max, Math.max(u.min, v));
+        CFG[u.k] = v;
+        const { inp, out } = inputs[u.k];
+        if (u.type === "bool") inp.checked = v; else inp.value = v;
+        if (out) out.value = v;
+      }
+      rebuild();
+    }
+
+    const pr = document.createElement("div"); pr.className = "presets";
+    const sel = document.createElement("select"); sel.setAttribute("aria-label", tr("Presets"));
+    // Prompt for a preset name when saving; <dialog> also works inside iframes.
+    const dlg = document.createElement("dialog"); dlg.className = "namedlg";
+    const form = document.createElement("form"); form.method = "dialog";
+    const lab = document.createElement("label"); lab.textContent = tr("Preset name"); lab.htmlFor = "preset-name";
+    const nameInp = document.createElement("input"); nameInp.type = "text"; nameInp.id = "preset-name"; nameInp.maxLength = 40; nameInp.autocomplete = "off";
+    const hint = document.createElement("div"); hint.className = "hint";
+    const cancel = document.createElement("button"); cancel.type = "button"; cancel.textContent = tr("Cancel"); cancel.onclick = () => dlg.close();
+    const ok = document.createElement("button"); ok.type = "submit"; ok.textContent = tr("Save");
+    const acts = document.createElement("div"); acts.className = "acts"; acts.append(cancel, ok);
+    form.append(lab, nameInp, hint, acts); dlg.append(form);
+    $("panel").appendChild(dlg);   // Keep dialog interactions from being treated as clicks outside the panel.
+    nameInp.oninput = () => { hint.textContent = has(nameInp.value.trim()) ? tr("This will overwrite the existing preset") : ""; };
+    form.onsubmit = e => {
+      const n = nameInp.value.trim();
+      if (!n) { e.preventDefault(); nameInp.focus(); return; }   // Do not save an empty name.
+      commitSave(n);
+    };
+    dlg.addEventListener("click", e => {   // Close when the backdrop is clicked; use target to distinguish Enter submissions at (0,0).
+      if (e.target !== dlg) return;
+      const r = dlg.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dlg.close();
+    });
+    const status = document.createElement("div"); status.className = "status"; status.setAttribute("role", "status");
+    const say = s => { status.textContent = tr(s); };
+    const mk = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = tr(label); b.onclick = fn; return b; };
+    const row = (...els) => { const d = document.createElement("div"); d.className = "prow"; d.append(...els); return d; };
+
+    function renderSel(selected) {
+      sel.innerHTML = "";
+      sel.add(new Option(tr("Select a preset"), ""));
+      Object.keys(presets).sort().forEach(n => sel.add(new Option(n, n)));
+      sel.value = selected && has(selected) ? selected : "";
+    }
+    sel.onchange = () => {
+      if (!has(sel.value)) return;
+      applySettings(presets[sel.value]); say("Loaded preset");
+    };
+    const commitSave = n => {
+      presets[n] = snapshot(); persist(); renderSel(n);
+      say(persisted ? "Saved" : "This browser cannot save presets");
+    };
+    const openSave = () => {   // Pre-fill the selected preset name so saving immediately overwrites it.
+      nameInp.value = has(sel.value) ? sel.value : "";
+      nameInp.oninput();
+      dlg.showModal(); nameInp.select();
+    };
+    renderSel();
+    pr.append(
+      row(sel, mk("Save", openSave), mk("Delete", () => { if (!has(sel.value)) return; delete presets[sel.value]; persist(); renderSel(); say("Deleted"); })),
+      status
+    );
+    fields.prepend(pr);
+
+    btns.appendChild(reset); fields.appendChild(btns);
+
+    if (innerWidth > 700) $("panel").open = true;
+    // Reduce the scene's available area by the panel height to keep the animation from overlapping it.
+    const panelEl = $("panel"), sceneEl = document.querySelector(".scene");
+    const measure = () => {
+      const avoid = Math.max(0, Math.round(innerHeight - panelEl.getBoundingClientRect().top)) + 8;
+      document.documentElement.style.setProperty("--avoid", avoid + "px");
+      avail = { w: sceneEl.clientWidth, h: sceneEl.clientHeight };
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(panelEl); ro.observe(document.body);
+
+    // Close the panel when clicking outside it; pointerdown avoids closing it when a slider drag ends outside.
+    document.addEventListener("pointerdown", e => {
+      if (panelEl.open && !panelEl.contains(e.target)) panelEl.open = false;
+    });
+    build();
+    rebuild();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+
+</html>
