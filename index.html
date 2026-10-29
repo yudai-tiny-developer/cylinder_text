@@ -1192,7 +1192,7 @@
         writeUint24(headerView, 6, width - 1);
         writeUint24(headerView, 9, height - 1);
         writeUint24(headerView, 12, frameDurations[index]);
-        header[15] = 2;
+        header[15] = 1;
         const frameData = new Uint8Array(imageChunks.reduce((n, chunk) => n + chunk.length, 0));
         let offset = 0;
         for (const chunk of imageChunks) {
