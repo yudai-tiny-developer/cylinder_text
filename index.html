@@ -482,7 +482,7 @@
       borderSpacing: 8,
       borderRotation: "withText",
       bgColor: "#0f1b30",     // Background color.
-      speed: -40,             // Rotation speed (degrees/second); negative values reverse direction.
+      speed: -36,             // Rotation speed (degrees/second); negative values reverse direction.
       tiltX: 18,              // Front/back tilt (degrees); positive values tilt the top away.
       tiltZ: -8,              // Side-to-side tilt (degrees).
       perspective: 900,       // Perspective strength (px); smaller values create a stronger effect.
@@ -554,9 +554,9 @@
         const v = obj[u.k];
         const valid = u.type === "bool" ? typeof v === "boolean"
           : u.type === "color" ? typeof v === "string" && /^#[\da-f]{6}$/i.test(v)
-          : u.type === "select" ? typeof v === "string" && u.options.some(o => o.value === v)
-          : u.type === "text" ? typeof v === "string"
-          : typeof v === "number" && Number.isFinite(v);
+            : u.type === "select" ? typeof v === "string" && u.options.some(o => o.value === v)
+              : u.type === "text" ? typeof v === "string"
+                : typeof v === "number" && Number.isFinite(v);
         if (!valid) return null;
         settings[u.k] = v;
       }
