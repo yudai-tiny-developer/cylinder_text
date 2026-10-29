@@ -727,8 +727,8 @@
 
     function frame(now) {
       frameRequest = 0;
-      const dt = Math.min(0.1, (now - last) / 1000); last = now;
-      if (CFG.paused) return;
+      const dt = Math.max(0, (now - last) / 1000); last = now;
+      if (CFG.paused || document.hidden) return;
       spin += CFG.speed * dt * Math.PI / 180;
 
       const R = CFG.radius, rad = Math.PI / 180;
@@ -757,8 +757,13 @@
     }
 
     function scheduleFrame() {
-      if (!CFG.paused && !frameRequest) frameRequest = requestAnimationFrame(frame);
+      if (!CFG.paused && !document.hidden && !frameRequest) frameRequest = requestAnimationFrame(frame);
     }
+
+    document.addEventListener("visibilitychange", () => {
+      last = performance.now();
+      if (!document.hidden) scheduleFrame();
+    });
 
     /* ---- Build the control panel ---- */
     const fields = $("fields");
