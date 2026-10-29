@@ -8,7 +8,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Multiple text rows with independent, alternating rotation
 - Adjustable font, weight, size, letter spacing, and row spacing
 - Text and outline colors, background color, and outline width
-- Optional top-and-bottom borders around all rows or each individual row, with customizable color and all CSS border styles
+- Optional top-and-bottom borders around all rows or each individual row, with customizable color and dotted, dashed, solid, or double styles
 - Optional border rotation synchronized with the text
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
@@ -69,7 +69,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Show back side | Controls whether text remains visible on the back of the cylinder. |
 | Pause | Stops and resumes animation. |
 
-Hold **Reset to defaults** for one second, then release while the pointer is still over the button to restore the original configuration. The button's progress indicator turns green when the reset is ready; releasing sooner or outside the button cancels it.
+Hold **Reset to defaults** for one second, then release while the pointer is still over the button to restore the original configuration. You can also hold Space or Enter while the button is focused. The button's progress indicator turns green when the reset is ready; releasing sooner or releasing the pointer outside the button cancels it.
 
 ## Fonts
 

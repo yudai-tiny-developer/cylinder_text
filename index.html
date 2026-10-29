@@ -560,8 +560,10 @@
     const ring = $("ring"), stage = $("stage");
     const ctx = document.createElement("canvas").getContext("2d");
     let rowsData = [], borderData = [], spin = 0, last = performance.now();
+    let rebuildRequest = 0, frameRequest = 0;
 
     function build() {
+      rebuildRequest++;
       ring.innerHTML = ""; rowsData = []; borderData = [];
       const { radius: R, fontSize: fs, letterSpacing: ls, fontWeight: fw } = CFG;
       const family = familyCss(CFG.fontFamily);
@@ -620,14 +622,17 @@
         ring.appendChild(row);
         rowsData.push({ y, chars, phase: r * 0.35 });
       }
-      fit();
+      updateSceneSettings();
     }
 
     // Rebuild the layout after fonts load to ensure accurate text-width measurements.
     function rebuild() {
+      const request = ++rebuildRequest;
       const spec = `${CFG.fontWeight} ${CFG.fontSize}px ${familyCss(CFG.fontFamily)}`;
       const loading = document.fonts ? document.fonts.load(spec, CFG.text + CFG.separator) : Promise.resolve();
-      loading.catch(() => { }).then(build);
+      loading.catch(() => { }).then(() => {
+        if (request === rebuildRequest) build();
+      });
     }
 
     // Add quotes and a fallback when a single font name is provided.
@@ -655,14 +660,8 @@
       stage.style.transform = `scale(${Math.min(1, avail.w / w, avail.h / h)})`;
     }
 
-    function frame(now) {
-      const dt = Math.min(0.1, (now - last) / 1000); last = now;
-      if (!CFG.paused) spin += CFG.speed * dt * Math.PI / 180;
-
-      const R = CFG.radius, rad = Math.PI / 180;
-      const tx = -CFG.tiltX * rad, cosT = Math.cos(tx), sinT = Math.sin(tx);
-      stage.style.perspective = persp() + "px";   // Perspective must be set on the ring's direct parent.
-      fit();
+    function updateSceneSettings() {
+      stage.style.perspective = persp() + "px";
       ring.style.transform = `rotateZ(${CFG.tiltZ}deg) rotateX(${-CFG.tiltX}deg)`;
       document.body.classList.toggle("hide-back", !CFG.backVisible);
       document.body.style.background = CFG.bgColor;
@@ -672,11 +671,28 @@
       ring.style.setProperty("--bc", CFG.borderColor);
       ring.style.setProperty("--bs", CFG.borderStyle);
       ring.style.setProperty("--bw", CFG.borderWidth + "px");
-      borderData.forEach(({ el, y, row }) => {
-        const direction = CFG.alternate && row % 2 ? -1 : 1;
-        const rotation = CFG.borderRotation === "withText" ? direction * spin : 0;
-        el.style.transform = `translateY(${y}px) rotateY(${rotation}rad) rotateX(90deg)`;
-      });
+      if (CFG.borderRotation === "fixed") {
+        borderData.forEach(({ el, y }) => {
+          el.style.transform = `translateY(${y}px) rotateX(90deg)`;
+        });
+      }
+      fit();
+    }
+
+    function frame(now) {
+      frameRequest = 0;
+      const dt = Math.min(0.1, (now - last) / 1000); last = now;
+      if (CFG.paused) return;
+      spin += CFG.speed * dt * Math.PI / 180;
+
+      const R = CFG.radius, rad = Math.PI / 180;
+      const tx = -CFG.tiltX * rad, cosT = Math.cos(tx), sinT = Math.sin(tx);
+      if (CFG.borderRotation === "withText") {
+        borderData.forEach(({ el, y, row }) => {
+          const direction = CFG.alternate && row % 2 ? -1 : 1;
+          el.style.transform = `translateY(${y}px) rotateY(${direction * spin}rad) rotateX(90deg)`;
+        });
+      }
 
       rowsData.forEach((row, r) => {
         const dir = CFG.alternate && r % 2 ? -1 : 1;
@@ -691,7 +707,11 @@
           c.el.style.transform = `translate(-50%,-50%) rotateY(${th}rad) translateZ(${R}px) scale(${s})`;
         }
       });
-      requestAnimationFrame(frame);
+      scheduleFrame();
+    }
+
+    function scheduleFrame() {
+      if (!CFG.paused && !frameRequest) frameRequest = requestAnimationFrame(frame);
     }
 
     /* ---- Build the control panel ---- */
@@ -758,6 +778,8 @@
         CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
         if (out && document.activeElement !== out) out.value = CFG[u.k];   // Do not overwrite the value while it is being edited.
         if (u.k === "borderMode") syncBorderControls();
+        updateSceneSettings();
+        scheduleFrame();
         if (u.rebuild) (u.k === "fontFamily" || u.type === "text" ? rebuild() : build());
       });
       if (out) {
@@ -800,6 +822,8 @@
         if (out) out.value = CFG[k];
       }
       syncBorderControls();
+      updateSceneSettings();
+      scheduleFrame();
       rebuild();
     };
     let hold = null;
@@ -882,6 +906,8 @@
         if (out) out.value = v;
       }
       syncBorderControls();
+      updateSceneSettings();
+      scheduleFrame();
       rebuild();
     }
 
@@ -1009,6 +1035,7 @@
       const avoid = Math.max(0, Math.round(innerHeight - panelEl.getBoundingClientRect().top)) + 8;
       document.documentElement.style.setProperty("--avoid", avoid + "px");
       avail = { w: sceneEl.clientWidth, h: sceneEl.clientHeight };
+      updateSceneSettings();
     };
     const ro = new ResizeObserver(measure);
     ro.observe(panelEl); ro.observe(document.body);
@@ -1017,9 +1044,8 @@
     document.addEventListener("pointerdown", e => {
       if (panelEl.open && !panelEl.contains(e.target)) panelEl.open = false;
     });
-    build();
     rebuild();
-    requestAnimationFrame(frame);
+    scheduleFrame();
   </script>
 </body>
 
