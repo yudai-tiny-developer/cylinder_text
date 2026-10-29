@@ -479,7 +479,8 @@
       borderColor: "#f2b45a",
       borderStyle: "solid",
       borderWidth: 8,
-      borderSpacing: 8,
+      borderTopSpacing: 8,
+      borderBottomSpacing: 8,
       borderRotation: "withText",
       bgColor: "#0f1b30",     // Background color.
       speed: -36,             // Rotation speed (degrees/second); negative values reverse direction.
@@ -519,7 +520,8 @@
         ]
       },
       { k: "borderWidth", label: "Border width", category: "Border", min: 0, max: 24, step: 0.5 },
-      { k: "borderSpacing", label: "Border spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
+      { k: "borderTopSpacing", label: "Top spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
+      { k: "borderBottomSpacing", label: "Bottom spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
       {
         k: "borderRotation", label: "Border rotation", category: "Border", type: "select", options: [
           { label: "Rotate with text", value: "withText" },
@@ -546,8 +548,18 @@
       { k: "paused", label: "Pause", category: "Motion and display", type: "bool" }
     ];
 
+    function migrateLegacySettings(obj) {
+      if (!obj || typeof obj !== "object" || Array.isArray(obj) || !Object.prototype.hasOwnProperty.call(obj, "borderSpacing")) return obj;
+      const settings = { ...obj };
+      if (!Object.prototype.hasOwnProperty.call(settings, "borderTopSpacing")) settings.borderTopSpacing = settings.borderSpacing;
+      if (!Object.prototype.hasOwnProperty.call(settings, "borderBottomSpacing")) settings.borderBottomSpacing = settings.borderSpacing;
+      delete settings.borderSpacing;
+      return settings;
+    }
+
     function validateSettings(obj) {
       if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
+      obj = migrateLegacySettings(obj);
       const settings = {};
       for (const u of UI) {
         if (!Object.prototype.hasOwnProperty.call(obj, u.k)) continue;
@@ -590,7 +602,7 @@
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
       "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各段の上下に枠", "Border color": "枠の色",
       "Border style": "枠のスタイル", "Solid": "実線", "Dashed": "破線", "Dotted": "点線", "Double": "二重線",
-      "Border width": "枠の太さ", "Border spacing": "枠と文字列の間隔", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
+      "Border width": "枠の太さ", "Top spacing": "上の余白", "Bottom spacing": "下の余白", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
       "Text appearance": "文字と見た目", "Colors": "色", "Cylinder layout": "円柱の配置", "Motion and display": "動きと表示",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
@@ -638,10 +650,11 @@
       const C = 2 * Math.PI * R;
       const ys = lines.map((_, r) => (r - (lines.length - 1) / 2) * fs * CFG.rowGap);
       if (CFG.borderMode !== "none") {
-        const borderOffset = fs / 2 + CFG.borderSpacing;
+        const topOffset = fs / 2 + CFG.borderTopSpacing;
+        const bottomOffset = fs / 2 + CFG.borderBottomSpacing;
         const bounds = CFG.borderMode === "all"
-          ? [{ top: ys[0] - borderOffset, bottom: ys[ys.length - 1] + borderOffset, topRow: 0, bottomRow: ys.length - 1 }]
-          : ys.map((y, row) => ({ top: y - borderOffset, bottom: y + borderOffset, topRow: row, bottomRow: row }));
+          ? [{ top: ys[0] - topOffset, bottom: ys[ys.length - 1] + bottomOffset, topRow: 0, bottomRow: ys.length - 1 }]
+          : ys.map((y, row) => ({ top: y - topOffset, bottom: y + bottomOffset, topRow: row, bottomRow: row }));
         for (const bound of bounds) {
           for (const [y, row] of [[bound.top, bound.topRow], [bound.bottom, bound.bottomRow]]) {
             const border = document.createElement("div");
@@ -875,7 +888,7 @@
     });
     function syncBorderControls() {
       const disabled = CFG.borderMode === "none";
-      for (const k of ["borderColor", "borderStyle", "borderWidth", "borderSpacing", "borderRotation"]) {
+      for (const k of ["borderColor", "borderStyle", "borderWidth", "borderTopSpacing", "borderBottomSpacing", "borderRotation"]) {
         const { inp, out, wrap } = inputs[k];
         inp.disabled = disabled;
         if (out) out.disabled = disabled;
@@ -1025,6 +1038,7 @@
     });
 
     function applySettings(obj, recordHistory = true) {
+      obj = migrateLegacySettings(obj);
       for (const u of UI) {
         let v = obj[u.k];
         const t = u.type === "bool" ? "boolean" : ["text", "color", "select"].includes(u.type) ? "string" : "number";

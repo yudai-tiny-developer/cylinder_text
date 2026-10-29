@@ -8,7 +8,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Multiple text rows with independent, alternating rotation
 - Adjustable font, weight, size, letter spacing, and row spacing
 - Text and outline colors, background color, and outline width
-- Optional top-and-bottom borders around all rows or each individual row, with customizable color and dotted, dashed, solid, or double styles
+- Optional top-and-bottom borders around all rows or each individual row, with independently adjustable top and bottom spacing and customizable color and dotted, dashed, solid, or double styles
 - Optional border rotation synchronized with the text
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
@@ -54,7 +54,8 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Border | Adds no border, top-and-bottom borders around all rows, or top-and-bottom borders around each row. |
 | Border style | Sets the border to dotted, dashed, solid, or double. |
 | Border width | Sets the border thickness from 0 to 24 pixels. |
-| Border spacing | Sets the gap between the text and border from 0 to 48 pixels. |
+| Top spacing | Sets the gap between the text and the top border from 0 to 48 pixels. |
+| Bottom spacing | Sets the gap between the text and the bottom border from 0 to 48 pixels. |
 | Border rotation | Chooses whether the border rotates with the text. |
 | Rotation speed | Rotation in degrees per second. Negative values reverse direction. |
 | Tilt (front/back) | Tilts the cylinder toward or away from the viewer. |
