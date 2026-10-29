@@ -437,6 +437,19 @@
       cursor: pointer;
     }
 
+    .policy-link {
+      display: block;
+      padding: 8px 0 0;
+      color: var(--accent);
+      text-align: right;
+      font-size: 12px;
+    }
+
+    .policy-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .ch {
         transition: none;
@@ -453,7 +466,9 @@
   </main>
   <details class="panel" id="panel">
     <summary>Settings</summary>
-    <div class="fields" id="fields"></div>
+    <div class="fields" id="fields">
+      <a class="policy-link" id="policy-link" href="privacy-policy.html">Privacy Policy</a>
+    </div>
   </details>
   <script>
     /* =========================================================
@@ -597,7 +612,8 @@
     const JA = /^ja/i.test(navigator.languages?.[0] || navigator.language || "en");
     const JA_TRANSLATIONS = {
       "Cylinder Text Animation": "円柱テキスト アニメーション",
-      "Settings": "設定", "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
+      "Settings": "設定", "Privacy Policy": "プライバシーポリシー",
+      "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
       "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各段の上下に枠", "Border color": "枠の色",
       "Border style": "枠のスタイル", "Solid": "実線", "Dashed": "破線", "Dotted": "点線", "Double": "二重線",
@@ -632,6 +648,7 @@
     document.title = tr("Cylinder Text Animation");
     const $ = id => document.getElementById(id);
     $("panel").firstElementChild.textContent = tr("Settings");
+    $("policy-link").textContent = tr("Privacy Policy");
     const ring = $("ring"), stage = $("stage");
     const ctx = document.createElement("canvas").getContext("2d");
     let rowsData = [], borderData = [], spin = 0, last = performance.now();
@@ -1476,6 +1493,7 @@
     fields.prepend(pr);
 
     btns.appendChild(reset); fields.appendChild(btns);
+    fields.appendChild($("policy-link"));
 
     if (innerWidth > 700) $("panel").open = true;
     // Reduce the scene's available area by the panel height to keep the animation from overlapping it.
