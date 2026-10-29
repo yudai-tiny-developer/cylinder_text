@@ -93,18 +93,18 @@
 
     .border {
       position: absolute;
+      box-sizing: border-box;
+      border: var(--bw, 2px) var(--bs, solid) var(--bc);
+      border-radius: 50%;
       pointer-events: none;
-      overflow: visible;
-    }
-
-    .border circle {
-      fill: none;
-      stroke: var(--bc);
-      stroke-width: 2;
     }
 
     .hide-back .ch {
       backface-visibility: hidden;
+    }
+
+    .f.disabled {
+      opacity: .45;
     }
 
     /* ===== Control panel ===== */
@@ -383,6 +383,9 @@
       strokeWidth: 0,         // Outline width (px); 0 disables the outline.
       borderMode: "none",
       borderColor: "#f2b45a",
+      borderStyle: "solid",
+      borderWidth: 2,
+      borderRotation: "withText",
       bgColor: "#0f1b30",     // Background color.
       speed: -40,             // Rotation speed (degrees/second); negative values reverse direction.
       tiltX: 18,              // Front/back tilt (degrees); positive values tilt the top away.
@@ -413,6 +416,23 @@
         { label: "Top and bottom (each row)", value: "rows" }
       ] },
       { k: "borderColor", label: "Border color", type: "color" },
+      { k: "borderStyle", label: "Border style", type: "select", options: [
+        { label: "None", value: "none" },
+        { label: "Hidden", value: "hidden" },
+        { label: "Dotted", value: "dotted" },
+        { label: "Dashed", value: "dashed" },
+        { label: "Solid", value: "solid" },
+        { label: "Double", value: "double" },
+        { label: "Groove", value: "groove" },
+        { label: "Ridge", value: "ridge" },
+        { label: "Inset", value: "inset" },
+        { label: "Outset", value: "outset" }
+      ] },
+      { k: "borderWidth", label: "Border width", min: 0, max: 12, step: 0.5 },
+      { k: "borderRotation", label: "Border rotation", type: "select", options: [
+        { label: "Rotate with text", value: "withText" },
+        { label: "Do not rotate", value: "fixed" }
+      ] },
       { k: "bgColor", label: "Background", type: "color" },
       { k: "speed", label: "Rotation speed", min: -180, max: 180, step: 1 },
       { k: "tiltX", label: "Tilt (front/back)", min: -90, max: 90, step: 1 },
@@ -440,6 +460,9 @@
       "Settings": "設定", "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
       "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各段の上下に枠", "Border color": "枠の色",
+      "Border style": "枠のスタイル", "None": "なし", "Hidden": "非表示", "Solid": "実線", "Dashed": "破線", "Dotted": "点線",
+      "Double": "二重線", "Groove": "溝", "Ridge": "隆起", "Inset": "内側", "Outset": "外側",
+      "Border width": "枠の太さ", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
       "Row gap": "段の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "段ごとに逆回転",
@@ -458,10 +481,10 @@
     $("panel").firstElementChild.textContent = tr("Settings");
     const ring = $("ring"), stage = $("stage");
     const ctx = document.createElement("canvas").getContext("2d");
-    let rowsData = [], spin = 0, last = performance.now();
+    let rowsData = [], borderData = [], spin = 0, last = performance.now();
 
     function build() {
-      ring.innerHTML = ""; rowsData = [];
+      ring.innerHTML = ""; rowsData = []; borderData = [];
       const { radius: R, fontSize: fs, letterSpacing: ls, fontWeight: fw } = CFG;
       const family = familyCss(CFG.fontFamily);
       ring.style.fontFamily = family;
@@ -476,21 +499,16 @@
           : ys.map(y => [y - fs / 2, y + fs / 2]);
         for (const [top, bottom] of bounds) {
           for (const y of [top, bottom]) {
-            const border = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            const border = document.createElement("div");
             border.classList.add("border");
-            border.setAttribute("viewBox", "0 0 200 200");
             border.setAttribute("aria-hidden", "true");
             border.style.left = -R + "px";
             border.style.top = -R + "px";
             border.style.width = 2 * R + "px";
             border.style.height = 2 * R + "px";
             border.style.transform = `translateY(${y}px) rotateX(90deg)`;
-            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            circle.setAttribute("cx", "100");
-            circle.setAttribute("cy", "100");
-            circle.setAttribute("r", "99");
-            border.appendChild(circle);
             ring.appendChild(border);
+            borderData.push({ el: border, y });
           }
         }
       }
@@ -573,6 +591,12 @@
       ring.style.setProperty("--sc", CFG.strokeColor);
       ring.style.setProperty("--sw", CFG.strokeWidth + "px");
       ring.style.setProperty("--bc", CFG.borderColor);
+      ring.style.setProperty("--bs", CFG.borderStyle);
+      ring.style.setProperty("--bw", CFG.borderWidth + "px");
+      borderData.forEach(({ el, y }) => {
+        const rotation = CFG.borderRotation === "withText" ? spin : 0;
+        el.style.transform = `translateY(${y}px) rotateY(${rotation}rad) rotateX(90deg)`;
+      });
 
       rowsData.forEach((row, r) => {
         const dir = CFG.alternate && r % 2 ? -1 : 1;
@@ -620,6 +644,7 @@
       inp.addEventListener("input", () => {
         CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
         if (out && document.activeElement !== out) out.value = CFG[u.k];   // Do not overwrite the value while it is being edited.
+        if (u.k === "borderMode") syncBorderControls();
         if (u.rebuild) (u.k === "fontFamily" || u.type === "text" ? rebuild() : build());
       });
       if (out) {
@@ -632,10 +657,20 @@
         });
         out.addEventListener("change", () => { out.value = CFG[u.k]; });
       }
-      inputs[u.k] = { inp, out, u };
+      inputs[u.k] = { inp, out, u, wrap };
       wrap.append(name, inp); if (out) wrap.append(out);
       fields.appendChild(wrap);
     });
+    function syncBorderControls() {
+      const disabled = CFG.borderMode === "none";
+      for (const k of ["borderColor", "borderStyle", "borderWidth", "borderRotation"]) {
+        const { inp, out, wrap } = inputs[k];
+        inp.disabled = disabled;
+        if (out) out.disabled = disabled;
+        wrap.classList.toggle("disabled", disabled);
+      }
+    }
+    syncBorderControls();
     const btns = document.createElement("div"); btns.className = "btns";
     const reset = document.createElement("button"); reset.textContent = tr("Reset to defaults");
     reset.onclick = () => {
@@ -645,6 +680,7 @@
         if (u.type === "bool") inp.checked = CFG[k]; else inp.value = CFG[k];
         if (out) out.value = CFG[k];
       }
+      syncBorderControls();
       rebuild();
     };
     // Load installed fonts in browsers that support the Local Font Access API.
@@ -679,6 +715,7 @@
         if (u.type === "bool") inp.checked = v; else inp.value = v;
         if (out) out.value = v;
       }
+      syncBorderControls();
       rebuild();
     }
 
