@@ -36,7 +36,7 @@ Then visit `http://localhost:8000`.
 
 Open **Settings** and adjust the controls:
 
-Settings are grouped into **Text appearance**, **Border**, **Cylinder layout**, and **Motion and display** sections.
+Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinder layout**, and **Motion and display** sections.
 
 | Setting | Description |
 | --- | --- |
@@ -44,15 +44,15 @@ Settings are grouped into **Text appearance**, **Border**, **Cylinder layout**, 
 | Separator | Text inserted between repeated units. |
 | Font | Font family name or comma-separated font stack. |
 | Weight | Font weight, from 100 to 900. |
+| Outline width | Outline thickness; `0` disables the outline. |
 | Text color | Fill color of each character. |
 | Outline color | Stroke color used around characters. |
-| Outline width | Outline thickness; `0` disables the outline. |
-| Border | Adds no border, top-and-bottom borders around all rows, or top-and-bottom borders around each row. |
 | Border color | Color of the border lines. |
+| Background | Stage background color. |
+| Border | Adds no border, top-and-bottom borders around all rows, or top-and-bottom borders around each row. |
 | Border style | Sets the border to dotted, dashed, solid, or double. |
 | Border width | Sets the border thickness from 0 to 12 pixels. |
 | Border rotation | Chooses whether the border rotates with the text. |
-| Background | Stage background color. |
 | Rotation speed | Rotation in degrees per second. Negative values reverse direction. |
 | Tilt (front/back) | Tilts the cylinder toward or away from the viewer. |
 | Tilt (side) | Tilts the cylinder horizontally. |

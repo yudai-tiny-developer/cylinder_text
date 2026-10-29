@@ -421,8 +421,6 @@
       { k: "separator", label: "Separator", category: "Text appearance", type: "text", rebuild: true },
       { k: "fontFamily", label: "Font", category: "Text appearance", type: "text", list: FONT_PRESETS, rebuild: true },
       { k: "fontWeight", label: "Weight", category: "Text appearance", min: 100, max: 900, step: 100, rebuild: true },
-      { k: "textColor", label: "Text color", category: "Text appearance", type: "color" },
-      { k: "strokeColor", label: "Outline color", category: "Text appearance", type: "color" },
       { k: "strokeWidth", label: "Outline width", category: "Text appearance", min: 0, max: 8, step: 0.5 },
       {
         k: "borderMode", label: "Border", category: "Border", type: "select", rebuild: true, options: [
@@ -431,7 +429,6 @@
           { label: "Top and bottom (each row)", value: "rows" }
         ]
       },
-      { k: "borderColor", label: "Border color", category: "Border", type: "color" },
       {
         k: "borderStyle", label: "Border style", category: "Border", type: "select", options: [
           { label: "Dotted", value: "dotted" },
@@ -447,6 +444,10 @@
           { label: "Do not rotate", value: "fixed" }
         ]
       },
+      { k: "textColor", label: "Text color", category: "Colors", type: "color" },
+      { k: "strokeColor", label: "Outline color", category: "Colors", type: "color" },
+      { k: "borderColor", label: "Border color", category: "Colors", type: "color" },
+      { k: "bgColor", label: "Background", category: "Colors", type: "color" },
       { k: "radius", label: "Radius", category: "Cylinder layout", min: 50, max: 500, step: 1, rebuild: true },
       { k: "fontSize", label: "Font size", category: "Cylinder layout", min: 16, max: 96, step: 1, rebuild: true },
       { k: "letterSpacing", label: "Letter spacing", category: "Cylinder layout", min: 0, max: 1, step: 0.01, rebuild: true },
@@ -460,7 +461,6 @@
       { k: "depthScale", label: "Shrink distant text", category: "Motion and display", min: 0, max: 0.9, step: 0.01 },
       { k: "minOpacity", label: "Distant opacity", category: "Motion and display", min: 0, max: 1, step: 0.01 },
       { k: "backVisible", label: "Show back side", category: "Motion and display", type: "bool" },
-      { k: "bgColor", label: "Background", category: "Motion and display", type: "color" },
       { k: "paused", label: "Pause", category: "Motion and display", type: "bool" }
     ];
 
@@ -476,7 +476,7 @@
       "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各段の上下に枠", "Border color": "枠の色",
       "Border style": "枠のスタイル", "Solid": "実線", "Dashed": "破線", "Dotted": "点線", "Double": "二重線",
       "Border width": "枠の太さ", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
-      "Text appearance": "文字と見た目", "Cylinder layout": "円柱の配置", "Motion and display": "動きと表示",
+      "Text appearance": "文字と見た目", "Colors": "色", "Cylinder layout": "円柱の配置", "Motion and display": "動きと表示",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
       "Row gap": "段の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "段ごとに逆回転",
