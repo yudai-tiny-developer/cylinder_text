@@ -51,7 +51,8 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Background | Stage background color. |
 | Border | Adds no border, top-and-bottom borders around all rows, or top-and-bottom borders around each row. |
 | Border style | Sets the border to dotted, dashed, solid, or double. |
-| Border width | Sets the border thickness from 0 to 12 pixels. |
+| Border width | Sets the border thickness from 0 to 24 pixels. |
+| Border spacing | Sets the gap between the text and border from 0 to 48 pixels. |
 | Border rotation | Chooses whether the border rotates with the text. |
 | Rotation speed | Rotation in degrees per second. Negative values reverse direction. |
 | Tilt (front/back) | Tilts the cylinder toward or away from the viewer. |
