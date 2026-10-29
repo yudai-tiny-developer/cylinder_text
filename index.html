@@ -91,6 +91,18 @@
       backface-visibility: visible;
     }
 
+    .border {
+      position: absolute;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .border circle {
+      fill: none;
+      stroke: var(--bc);
+      stroke-width: 2;
+    }
+
     .hide-back .ch {
       backface-visibility: hidden;
     }
@@ -369,6 +381,8 @@
       textColor: "#f1e7cf",   // Text color.
       strokeColor: "#f2b45a", // Outline color.
       strokeWidth: 0,         // Outline width (px); 0 disables the outline.
+      borderMode: "none",
+      borderColor: "#f2b45a",
       bgColor: "#0f1b30",     // Background color.
       speed: -40,             // Rotation speed (degrees/second); negative values reverse direction.
       tiltX: 18,              // Front/back tilt (degrees); positive values tilt the top away.
@@ -393,6 +407,12 @@
       { k: "textColor", label: "Text color", type: "color" },
       { k: "strokeColor", label: "Outline color", type: "color" },
       { k: "strokeWidth", label: "Outline width", min: 0, max: 8, step: 0.5 },
+      { k: "borderMode", label: "Border", type: "select", rebuild: true, options: [
+        { label: "No border", value: "none" },
+        { label: "Top and bottom (all rows)", value: "all" },
+        { label: "Top and bottom (each row)", value: "rows" }
+      ] },
+      { k: "borderColor", label: "Border color", type: "color" },
       { k: "bgColor", label: "Background", type: "color" },
       { k: "speed", label: "Rotation speed", min: -180, max: 180, step: 1 },
       { k: "tiltX", label: "Tilt (front/back)", min: -90, max: 90, step: 1 },
@@ -419,6 +439,7 @@
       "Cylinder Text Animation": "円柱テキスト アニメーション",
       "Settings": "設定", "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
+      "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各段の上下に枠", "Border color": "枠の色",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
       "Row gap": "段の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "段ごとに逆回転",
@@ -448,6 +469,31 @@
 
       const lines = CFG.text.split("\n");   // One line becomes one row.
       const C = 2 * Math.PI * R;
+      const ys = lines.map((_, r) => (r - (lines.length - 1) / 2) * fs * CFG.rowGap);
+      if (CFG.borderMode !== "none") {
+        const bounds = CFG.borderMode === "all"
+          ? [[ys[0] - fs / 2, ys[ys.length - 1] + fs / 2]]
+          : ys.map(y => [y - fs / 2, y + fs / 2]);
+        for (const [top, bottom] of bounds) {
+          for (const y of [top, bottom]) {
+            const border = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            border.classList.add("border");
+            border.setAttribute("viewBox", "0 0 200 200");
+            border.setAttribute("aria-hidden", "true");
+            border.style.left = -R + "px";
+            border.style.top = -R + "px";
+            border.style.width = 2 * R + "px";
+            border.style.height = 2 * R + "px";
+            border.style.transform = `translateY(${y}px) rotateX(90deg)`;
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", "100");
+            circle.setAttribute("cy", "100");
+            circle.setAttribute("r", "99");
+            border.appendChild(circle);
+            ring.appendChild(border);
+          }
+        }
+      }
 
       for (let r = 0; r < lines.length; r++) {
         // Calculate character widths and repetitions for each line; empty lines remain empty rows.
@@ -526,6 +572,7 @@
       ring.style.setProperty("--tc", CFG.textColor);
       ring.style.setProperty("--sc", CFG.strokeColor);
       ring.style.setProperty("--sw", CFG.strokeWidth + "px");
+      ring.style.setProperty("--bc", CFG.borderColor);
 
       rowsData.forEach((row, r) => {
         const dir = CFG.alternate && r % 2 ? -1 : 1;
@@ -555,7 +602,7 @@
       const inp = document.createElement(u.type === "select" ? "select" : u.multiline ? "textarea" : "input");
       inp.id = "f-" + u.k;
       let out = null;
-      if (u.type === "select") { u.options.forEach(o => inp.add(new Option(o.label, o.value))); inp.value = CFG[u.k]; }
+      if (u.type === "select") { u.options.forEach(o => inp.add(new Option(tr(o.label), o.value))); inp.value = CFG[u.k]; }
       else if (u.type === "color") { inp.type = "color"; inp.value = CFG[u.k]; }
       else if (u.type === "text") {
         if (u.multiline) { inp.rows = 3; inp.placeholder = tr("Each line becomes one row"); } else inp.type = "text";
