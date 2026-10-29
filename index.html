@@ -314,6 +314,24 @@
       flex: 1;
     }
 
+    .webp-progress {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      --export-progress: 0;
+    }
+
+    .webp-progress::before {
+      position: absolute;
+      z-index: -1;
+      inset: 0 auto 0 0;
+      width: calc(var(--export-progress) * 1%);
+      background: var(--accent);
+      opacity: .3;
+      content: "";
+      pointer-events: none;
+    }
+
     .presets .prow> :first-child {
       flex: 1;
       min-width: 0;
@@ -1321,6 +1339,7 @@
       }
 
       exportWebp.disabled = true;
+      exportWebp.style.setProperty("--export-progress", 0);
       const startSpin = spin;
       try {
         if (document.fonts) await document.fonts.ready;
@@ -1354,6 +1373,7 @@
             return;
           }
           frames.push(getWebpFrameChunks(await blob.arrayBuffer()));
+          exportWebp.style.setProperty("--export-progress", (i + 1) / frameCount * 100);
           status.textContent = `${tr("Exporting animated WebP")} (${i + 1}/${frameCount})`;
           await new Promise(resolve => setTimeout(resolve, 0));
         }
@@ -1370,8 +1390,10 @@
         say("Could not export animated WebP");
       } finally {
         exportWebp.disabled = false;
+        exportWebp.style.setProperty("--export-progress", 0);
       }
     });
+    exportWebp.classList.add("webp-progress");
     const importJson = mk("Import JSON", () => jsonFile.click());
     const jsonActions = row(exportJson, importJson);
     jsonActions.classList.add("json-actions");
