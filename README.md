@@ -100,7 +100,7 @@ After changing a setting, the selector returns to its placeholder. Returning all
 
 Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file.
 
-Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the current text, appearance, and rotation speed (the Pause setting does not affect export). It renders at 60 fps and scales the output to twice the available scene dimensions, up to 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, and exports longer than 25 seconds are not supported. This feature requires browser support for WebP canvas encoding.
+Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the current text, appearance, and rotation speed (the Pause setting does not affect export). It averages 60 fps, distributing 16 ms and 17 ms frame delays to match the requested rotation speed without accumulating timing drift. The output scales to twice the available scene dimensions, up to 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, and exports longer than 25 seconds are not supported. This feature requires browser support for WebP canvas encoding.
 
 ## Privacy
 

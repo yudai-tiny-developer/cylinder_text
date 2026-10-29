@@ -1154,7 +1154,7 @@
       return chunks;
     }
 
-    function makeAnimatedWebp(width, height, frameChunks, frameDuration) {
+    function makeAnimatedWebp(width, height, frameChunks, frameDurations) {
       const extended = new Uint8Array(10);
       extended[0] = 2;
       writeUint24(new DataView(extended.buffer), 4, width - 1);
@@ -1163,12 +1163,12 @@
       const animationView = new DataView(animation.buffer);
       animationView.setUint16(4, 0, true);
       const chunks = [webpChunk("VP8X", extended), webpChunk("ANIM", animation)];
-      for (const imageChunks of frameChunks) {
+      frameChunks.forEach((imageChunks, index) => {
         const header = new Uint8Array(16);
         const headerView = new DataView(header.buffer);
         writeUint24(headerView, 6, width - 1);
         writeUint24(headerView, 9, height - 1);
-        writeUint24(headerView, 12, frameDuration);
+        writeUint24(headerView, 12, frameDurations[index]);
         header[15] = 2;
         const frameData = new Uint8Array(imageChunks.reduce((n, chunk) => n + chunk.length, 0));
         let offset = 0;
@@ -1180,7 +1180,7 @@
         framePayload.set(header);
         framePayload.set(frameData, header.length);
         chunks.push(webpChunk("ANMF", framePayload));
-      }
+      });
       const bodySize = 4 + chunks.reduce((n, chunk) => n + chunk.length, 0);
       const output = new Uint8Array(8 + bodySize);
       output.set([82, 73, 70, 70]);
@@ -1336,8 +1336,10 @@
         canvas.height = height;
         const context = canvas.getContext("2d");
         if (!context) throw new Error("Could not create an export canvas");
-        const duration = Math.max(1, Math.round(period * 1000 / frameCount));
         const frames = [];
+        const loopDuration = Math.round(period * 1000);
+        const frameDurations = Array.from({ length: frameCount }, (_, i) =>
+          Math.max(1, Math.round((i + 1) * loopDuration / frameCount) - Math.round(i * loopDuration / frameCount)));
         for (let i = 0; i < frameCount; i++) {
           drawExportFrame(context, width, height, pixelScale, sceneScale,
             startSpin + Math.sign(CFG.speed) * Math.PI * 2 * i / frameCount);
@@ -1352,7 +1354,7 @@
           status.textContent = `${tr("Exporting animated WebP")} (${i + 1}/${frameCount})`;
           await new Promise(resolve => setTimeout(resolve, 0));
         }
-        const blob = makeAnimatedWebp(width, height, frames, duration);
+        const blob = makeAnimatedWebp(width, height, frames, frameDurations);
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
