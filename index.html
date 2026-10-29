@@ -146,6 +146,20 @@
       overflow-y: auto;
     }
 
+    .settings-category {
+      grid-column: 1 / -1;
+      margin: 4px 0 -2px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      font-weight: 600;
+    }
+
+    .settings-category.first {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: 0;
+    }
+
     .f {
       display: grid;
       grid-template-columns: 7.5em 1fr 4.6em;
@@ -384,7 +398,7 @@
       borderMode: "none",
       borderColor: "#f2b45a",
       borderStyle: "solid",
-      borderWidth: 2,
+      borderWidth: 8,
       borderRotation: "withText",
       bgColor: "#0f1b30",     // Background color.
       speed: -40,             // Rotation speed (degrees/second); negative values reverse direction.
@@ -403,51 +417,51 @@
 
     /* UI definitions: rebuild=true marks settings that require rebuilding the text layout. */
     const UI = [
-      { k: "text", label: "Text", type: "text", multiline: true, rebuild: true },
-      { k: "separator", label: "Separator", type: "text", rebuild: true },
-      { k: "fontFamily", label: "Font", type: "text", list: FONT_PRESETS, rebuild: true },
-      { k: "fontWeight", label: "Weight", min: 100, max: 900, step: 100, rebuild: true },
-      { k: "textColor", label: "Text color", type: "color" },
-      { k: "strokeColor", label: "Outline color", type: "color" },
-      { k: "strokeWidth", label: "Outline width", min: 0, max: 8, step: 0.5 },
-      { k: "borderMode", label: "Border", type: "select", rebuild: true, options: [
-        { label: "No border", value: "none" },
-        { label: "Top and bottom (all rows)", value: "all" },
-        { label: "Top and bottom (each row)", value: "rows" }
-      ] },
-      { k: "borderColor", label: "Border color", type: "color" },
-      { k: "borderStyle", label: "Border style", type: "select", options: [
-        { label: "None", value: "none" },
-        { label: "Hidden", value: "hidden" },
-        { label: "Dotted", value: "dotted" },
-        { label: "Dashed", value: "dashed" },
-        { label: "Solid", value: "solid" },
-        { label: "Double", value: "double" },
-        { label: "Groove", value: "groove" },
-        { label: "Ridge", value: "ridge" },
-        { label: "Inset", value: "inset" },
-        { label: "Outset", value: "outset" }
-      ] },
-      { k: "borderWidth", label: "Border width", min: 0, max: 12, step: 0.5 },
-      { k: "borderRotation", label: "Border rotation", type: "select", options: [
-        { label: "Rotate with text", value: "withText" },
-        { label: "Do not rotate", value: "fixed" }
-      ] },
-      { k: "bgColor", label: "Background", type: "color" },
-      { k: "speed", label: "Rotation speed", min: -180, max: 180, step: 1 },
-      { k: "tiltX", label: "Tilt (front/back)", min: -90, max: 90, step: 1 },
-      { k: "tiltZ", label: "Tilt (side)", min: -90, max: 90, step: 1 },
-      { k: "perspective", label: "Perspective", min: 300, max: 1000, step: 10 },
-      { k: "depthScale", label: "Shrink distant text", min: 0, max: 0.9, step: 0.01 },
-      { k: "minOpacity", label: "Distant opacity", min: 0, max: 1, step: 0.01 },
-      { k: "radius", label: "Radius", min: 50, max: 500, step: 1, rebuild: true },
-      { k: "fontSize", label: "Font size", min: 16, max: 96, step: 1, rebuild: true },
-      { k: "letterSpacing", label: "Letter spacing", min: 0, max: 1, step: 0.01, rebuild: true },
-      { k: "rowGap", label: "Row gap", min: 0.8, max: 3, step: 0.05, rebuild: true },
-      { k: "repeat", label: "Repeat", type: "bool", rebuild: true },
-      { k: "alternate", label: "Alternate direction per row", type: "bool" },
-      { k: "backVisible", label: "Show back side", type: "bool" },
-      { k: "paused", label: "Pause", type: "bool" }
+      { k: "text", label: "Text", category: "Text appearance", type: "text", multiline: true, rebuild: true },
+      { k: "separator", label: "Separator", category: "Text appearance", type: "text", rebuild: true },
+      { k: "fontFamily", label: "Font", category: "Text appearance", type: "text", list: FONT_PRESETS, rebuild: true },
+      { k: "fontWeight", label: "Weight", category: "Text appearance", min: 100, max: 900, step: 100, rebuild: true },
+      { k: "textColor", label: "Text color", category: "Text appearance", type: "color" },
+      { k: "strokeColor", label: "Outline color", category: "Text appearance", type: "color" },
+      { k: "strokeWidth", label: "Outline width", category: "Text appearance", min: 0, max: 8, step: 0.5 },
+      {
+        k: "borderMode", label: "Border", category: "Border", type: "select", rebuild: true, options: [
+          { label: "No border", value: "none" },
+          { label: "Top and bottom (all rows)", value: "all" },
+          { label: "Top and bottom (each row)", value: "rows" }
+        ]
+      },
+      { k: "borderColor", label: "Border color", category: "Border", type: "color" },
+      {
+        k: "borderStyle", label: "Border style", category: "Border", type: "select", options: [
+          { label: "Dotted", value: "dotted" },
+          { label: "Dashed", value: "dashed" },
+          { label: "Solid", value: "solid" },
+          { label: "Double", value: "double" }
+        ]
+      },
+      { k: "borderWidth", label: "Border width", category: "Border", min: 0, max: 24, step: 0.5 },
+      {
+        k: "borderRotation", label: "Border rotation", category: "Border", type: "select", options: [
+          { label: "Rotate with text", value: "withText" },
+          { label: "Do not rotate", value: "fixed" }
+        ]
+      },
+      { k: "radius", label: "Radius", category: "Cylinder layout", min: 50, max: 500, step: 1, rebuild: true },
+      { k: "fontSize", label: "Font size", category: "Cylinder layout", min: 16, max: 96, step: 1, rebuild: true },
+      { k: "letterSpacing", label: "Letter spacing", category: "Cylinder layout", min: 0, max: 1, step: 0.01, rebuild: true },
+      { k: "rowGap", label: "Row gap", category: "Cylinder layout", min: 0.8, max: 3, step: 0.05, rebuild: true },
+      { k: "repeat", label: "Repeat", category: "Cylinder layout", type: "bool", rebuild: true },
+      { k: "alternate", label: "Alternate direction per row", category: "Cylinder layout", type: "bool" },
+      { k: "speed", label: "Rotation speed", category: "Motion and display", min: -180, max: 180, step: 1 },
+      { k: "tiltX", label: "Tilt (front/back)", category: "Motion and display", min: -90, max: 90, step: 1 },
+      { k: "tiltZ", label: "Tilt (side)", category: "Motion and display", min: -90, max: 90, step: 1 },
+      { k: "perspective", label: "Perspective", category: "Motion and display", min: 300, max: 1000, step: 10 },
+      { k: "depthScale", label: "Shrink distant text", category: "Motion and display", min: 0, max: 0.9, step: 0.01 },
+      { k: "minOpacity", label: "Distant opacity", category: "Motion and display", min: 0, max: 1, step: 0.01 },
+      { k: "backVisible", label: "Show back side", category: "Motion and display", type: "bool" },
+      { k: "bgColor", label: "Background", category: "Motion and display", type: "color" },
+      { k: "paused", label: "Pause", category: "Motion and display", type: "bool" }
     ];
 
     /* =========================================================
@@ -460,9 +474,9 @@
       "Settings": "設定", "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
       "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各段の上下に枠", "Border color": "枠の色",
-      "Border style": "枠のスタイル", "None": "なし", "Hidden": "非表示", "Solid": "実線", "Dashed": "破線", "Dotted": "点線",
-      "Double": "二重線", "Groove": "溝", "Ridge": "隆起", "Inset": "内側", "Outset": "外側",
+      "Border style": "枠のスタイル", "Solid": "実線", "Dashed": "破線", "Dotted": "点線", "Double": "二重線",
       "Border width": "枠の太さ", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
+      "Text appearance": "文字と見た目", "Cylinder layout": "円柱の配置", "Motion and display": "動きと表示",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
       "Row gap": "段の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "段ごとに逆回転",
@@ -495,10 +509,10 @@
       const ys = lines.map((_, r) => (r - (lines.length - 1) / 2) * fs * CFG.rowGap);
       if (CFG.borderMode !== "none") {
         const bounds = CFG.borderMode === "all"
-          ? [[ys[0] - fs / 2, ys[ys.length - 1] + fs / 2]]
-          : ys.map(y => [y - fs / 2, y + fs / 2]);
-        for (const [top, bottom] of bounds) {
-          for (const y of [top, bottom]) {
+          ? [{ top: ys[0] - fs / 2, bottom: ys[ys.length - 1] + fs / 2, topRow: 0, bottomRow: ys.length - 1 }]
+          : ys.map((y, row) => ({ top: y - fs / 2, bottom: y + fs / 2, topRow: row, bottomRow: row }));
+        for (const bound of bounds) {
+          for (const [y, row] of [[bound.top, bound.topRow], [bound.bottom, bound.bottomRow]]) {
             const border = document.createElement("div");
             border.classList.add("border");
             border.setAttribute("aria-hidden", "true");
@@ -508,7 +522,7 @@
             border.style.height = 2 * R + "px";
             border.style.transform = `translateY(${y}px) rotateX(90deg)`;
             ring.appendChild(border);
-            borderData.push({ el: border, y });
+            borderData.push({ el: border, y, row });
           }
         }
       }
@@ -593,8 +607,9 @@
       ring.style.setProperty("--bc", CFG.borderColor);
       ring.style.setProperty("--bs", CFG.borderStyle);
       ring.style.setProperty("--bw", CFG.borderWidth + "px");
-      borderData.forEach(({ el, y }) => {
-        const rotation = CFG.borderRotation === "withText" ? spin : 0;
+      borderData.forEach(({ el, y, row }) => {
+        const direction = CFG.alternate && row % 2 ? -1 : 1;
+        const rotation = CFG.borderRotation === "withText" ? direction * spin : 0;
         el.style.transform = `translateY(${y}px) rotateY(${rotation}rad) rotateX(90deg)`;
       });
 
@@ -617,7 +632,15 @@
     /* ---- Build the control panel ---- */
     const fields = $("fields");
     const inputs = {};
+    let currentCategory = "";
     UI.forEach(u => {
+      if (u.category !== currentCategory) {
+        const heading = document.createElement("div");
+        heading.className = "settings-category" + (currentCategory ? "" : " first");
+        heading.textContent = tr(u.category);
+        fields.appendChild(heading);
+        currentCategory = u.category;
+      }
       const wrap = document.createElement("div");
       wrap.className = "f" + (u.type ? " wide" : "");
       const name = document.createElement(u.type === "color" ? "span" : "label");

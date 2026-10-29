@@ -36,6 +36,8 @@ Then visit `http://localhost:8000`.
 
 Open **Settings** and adjust the controls:
 
+Settings are grouped into **Text appearance**, **Border**, **Cylinder layout**, and **Motion and display** sections.
+
 | Setting | Description |
 | --- | --- |
 | Text | Text to display. Put each line on a separate row. |
@@ -47,7 +49,7 @@ Open **Settings** and adjust the controls:
 | Outline width | Outline thickness; `0` disables the outline. |
 | Border | Adds no border, top-and-bottom borders around all rows, or top-and-bottom borders around each row. |
 | Border color | Color of the border lines. |
-| Border style | Sets the border to any CSS border style: none, hidden, dotted, dashed, solid, double, groove, ridge, inset, or outset. |
+| Border style | Sets the border to dotted, dashed, solid, or double. |
 | Border width | Sets the border thickness from 0 to 12 pixels. |
 | Border rotation | Chooses whether the border rotates with the text. |
 | Background | Stage background color. |
@@ -62,7 +64,7 @@ Open **Settings** and adjust the controls:
 | Letter spacing | Spacing between characters in em units. |
 | Row gap | Vertical distance between rows in multiples of font size. |
 | Repeat | Repeats text and its separator until each row fills the circumference. |
-| Alternate direction per row | Reverses rotation direction on alternating rows. |
+| Alternate direction per row | Reverses rotation direction on alternating rows, including borders set to rotate with the text. |
 | Show back side | Controls whether text remains visible on the back of the cylinder. |
 | Pause | Stops and resumes animation. |
 
