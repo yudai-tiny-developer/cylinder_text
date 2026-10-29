@@ -14,6 +14,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Optional text repetition and custom separators
 - Optional mirrored/back-side text
 - Pause/resume and reset-to-default controls
+- Automatically restores the last-used settings on the next visit
 - Named presets stored locally in the browser
 - English/Japanese interface selection based on the browser language
 - Installed-font discovery where the browser supports the Local Font Access API
@@ -92,13 +93,13 @@ The preset selector saves named snapshots of the animation settings in browser `
 3. Select a saved preset to restore it.
 4. Use **Delete** to remove the selected preset.
 
-Presets remain on the current browser and origin. Clearing site data removes them. Preset names are limited to 40 characters. If browser storage is unavailable, the app reports that it cannot save the preset.
+After changing a setting, the selector returns to its placeholder. Returning all settings to the preset values selects it again. Presets remain on the current browser and origin. Clearing site data removes them. Preset names are limited to 40 characters. If browser storage is unavailable, the app reports that it cannot save the preset.
 
 Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file.
 
 ## Privacy
 
-The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. Saved presets are stored only in local browser storage.
+The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. The last-used settings and saved presets are stored only in local browser storage.
 
 A hosted copy may contact Google Fonts and the hosting provider to load application resources. Those network requests are subject to the privacy policies of those services and the host. For details about app data handling, see [Privacy Policy](./privacy-policy.html).
 

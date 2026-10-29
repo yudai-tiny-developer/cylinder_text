@@ -524,6 +524,39 @@
       { k: "paused", label: "Pause", category: "Motion and display", type: "bool" }
     ];
 
+    function validateSettings(obj) {
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
+      const settings = {};
+      for (const u of UI) {
+        if (!Object.prototype.hasOwnProperty.call(obj, u.k)) continue;
+        const v = obj[u.k];
+        const valid = u.type === "bool" ? typeof v === "boolean"
+          : u.type === "color" ? typeof v === "string" && /^#[\da-f]{6}$/i.test(v)
+          : u.type === "select" ? typeof v === "string" && u.options.some(o => o.value === v)
+          : u.type === "text" ? typeof v === "string"
+          : typeof v === "number" && Number.isFinite(v);
+        if (!valid) return null;
+        settings[u.k] = v;
+      }
+      return Object.keys(settings).length ? settings : null;
+    }
+
+    const LAST_SETTINGS_KEY = "cylinderTextLastSettings";
+    let lastSettingsLoadFailed = false;
+    try {
+      const saved = localStorage.getItem(LAST_SETTINGS_KEY);
+      const settings = saved ? validateSettings(JSON.parse(saved)) : null;
+      if (settings) {
+        for (const u of UI) {
+          if (!Object.prototype.hasOwnProperty.call(settings, u.k)) continue;
+          const value = settings[u.k];
+          CFG[u.k] = typeof value === "number" ? Math.min(u.max, Math.max(u.min, value)) : value;
+        }
+      } else if (saved) lastSettingsLoadFailed = true;
+    } catch (e) {
+      lastSettingsLoadFailed = true;
+    }
+
     /* =========================================================
        Main logic
        ========================================================= */
@@ -548,6 +581,8 @@
       "Presets": "プリセット", "Select a preset": "プリセットを選択", "Preset name": "プリセット名", "Save": "保存", "Delete": "削除", "Cancel": "キャンセル", "This will overwrite the existing preset": "同じ名前のプリセットを上書きします",
       "Saved": "保存しました", "Deleted": "削除しました", "Loaded preset": "読み込みました",
       "This browser cannot save presets": "このブラウザには保存できません",
+      "Could not save current settings": "現在の設定を保存できませんでした",
+      "Could not load previous settings": "前回の設定を読み込めませんでした",
       "Download JSON": "JSONを書き出す", "Import JSON": "JSONを読み込む",
       "Settings exported": "設定をJSONに書き出しました", "Settings imported": "設定を読み込みました",
       "Invalid settings JSON": "設定JSONの形式が正しくありません", "Could not read settings file": "設定ファイルを読み込めませんでした"
@@ -717,6 +752,8 @@
     /* ---- Build the control panel ---- */
     const fields = $("fields");
     const inputs = {};
+    let loadedPresetName = "";
+    let loadedPresetSettings = null;
     let currentCategory = "";
     UI.forEach(u => {
       if (u.category !== currentCategory) {
@@ -777,6 +814,8 @@
       inp.addEventListener("input", () => {
         CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
         if (out && document.activeElement !== out) out.value = CFG[u.k];   // Do not overwrite the value while it is being edited.
+        scheduleSettingsPersistence();
+        updatePresetState();
         if (u.k === "borderMode") syncBorderControls();
         updateSceneSettings();
         scheduleFrame();
@@ -821,6 +860,8 @@
         if (u.type === "bool") inp.checked = CFG[k]; else inp.value = CFG[k];
         if (out) out.value = CFG[k];
       }
+      clearPresetState();
+      persistCurrentSettings();
       syncBorderControls();
       updateSceneSettings();
       scheduleFrame();
@@ -909,23 +950,7 @@
       updateSceneSettings();
       scheduleFrame();
       rebuild();
-    }
-
-    function validateImportedSettings(obj) {
-      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
-      const settings = {};
-      for (const u of UI) {
-        if (!Object.prototype.hasOwnProperty.call(obj, u.k)) continue;
-        const v = obj[u.k];
-        const valid = u.type === "bool" ? typeof v === "boolean"
-          : u.type === "color" ? typeof v === "string" && /^#[\da-f]{6}$/i.test(v)
-          : u.type === "select" ? typeof v === "string" && u.options.some(o => o.value === v)
-          : u.type === "text" ? typeof v === "string"
-          : typeof v === "number" && Number.isFinite(v);
-        if (!valid) return null;
-        settings[u.k] = v;
-      }
-      return Object.keys(settings).length ? settings : null;
+      persistCurrentSettings();
     }
 
     const pr = document.createElement("div"); pr.className = "presets";
@@ -954,6 +979,34 @@
     });
     const status = document.createElement("div"); status.className = "status"; status.setAttribute("role", "status");
     const say = s => { status.textContent = tr(s); };
+    if (lastSettingsLoadFailed) say("Could not load previous settings");
+    let settingsSaveTimer = 0;
+    function persistCurrentSettings() {
+      clearTimeout(settingsSaveTimer);
+      settingsSaveTimer = 0;
+      try {
+        localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(snapshot()));
+      } catch (e) {
+        say("Could not save current settings");
+      }
+    }
+    function scheduleSettingsPersistence() {
+      clearTimeout(settingsSaveTimer);
+      settingsSaveTimer = setTimeout(persistCurrentSettings, 250);
+    }
+    window.addEventListener("pagehide", persistCurrentSettings);
+    function clearPresetState() {
+      loadedPresetName = "";
+      loadedPresetSettings = null;
+      sel.value = "";
+      status.textContent = "";
+    }
+    function updatePresetState() {
+      if (!loadedPresetName || !loadedPresetSettings) return;
+      const matches = UI.every(u => CFG[u.k] === loadedPresetSettings[u.k]);
+      sel.value = matches ? loadedPresetName : "";
+      if (!matches) status.textContent = "";
+    }
     const mk = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = tr(label); b.onclick = fn; return b; };
     const row = (...els) => { const d = document.createElement("div"); d.className = "prow"; d.append(...els); return d; };
     const jsonFile = document.createElement("input");
@@ -971,12 +1024,13 @@
           say("Invalid settings JSON");
           return;
         }
-        const settings = validateImportedSettings(parsed);
+        const settings = validateSettings(parsed);
         if (!settings) {
           say("Invalid settings JSON");
           return;
         }
         applySettings(settings);
+        clearPresetState();
         say("Settings imported");
       } catch {
         say("Could not read settings file");
@@ -1005,21 +1059,29 @@
       sel.value = selected && has(selected) ? selected : "";
     }
     sel.onchange = () => {
-      if (!has(sel.value)) return;
-      applySettings(presets[sel.value]); say("Loaded preset");
+      if (!has(sel.value)) {
+        clearPresetState();
+        return;
+      }
+      applySettings(presets[sel.value]);
+      loadedPresetName = sel.value;
+      loadedPresetSettings = snapshot();
+      say("Loaded preset");
     };
     const commitSave = n => {
       presets[n] = snapshot(); persist(); renderSel(n);
+      loadedPresetName = n;
+      loadedPresetSettings = snapshot();
       say(persisted ? "Saved" : "This browser cannot save presets");
     };
-    const openSave = () => {   // Pre-fill the selected preset name so saving immediately overwrites it.
-      nameInp.value = has(sel.value) ? sel.value : "";
+    const openSave = () => {   // Pre-fill the loaded preset name for quick overwrites.
+      nameInp.value = has(sel.value) ? sel.value : has(loadedPresetName) ? loadedPresetName : "";
       nameInp.oninput();
       dlg.showModal(); nameInp.select();
     };
     renderSel();
     pr.append(
-      row(sel, mk("Save", openSave), mk("Delete", () => { if (!has(sel.value)) return; delete presets[sel.value]; persist(); renderSel(); say("Deleted"); })),
+      row(sel, mk("Save", openSave), mk("Delete", () => { if (!has(sel.value)) return; delete presets[sel.value]; persist(); clearPresetState(); renderSel(); say("Deleted"); })),
       jsonActions,
       status
     );
