@@ -310,6 +310,10 @@
       flex: 1;
     }
 
+    .presets .webp-actions button {
+      flex: 1;
+    }
+
     .presets .prow> :first-child {
       flex: 1;
       min-width: 0;
@@ -585,7 +589,14 @@
       "Could not load previous settings": "前回の設定を読み込めませんでした",
       "Download JSON": "JSONを書き出す", "Import JSON": "JSONを読み込む",
       "Settings exported": "設定をJSONに書き出しました", "Settings imported": "設定を読み込みました",
-      "Invalid settings JSON": "設定JSONの形式が正しくありません", "Could not read settings file": "設定ファイルを読み込めませんでした"
+      "Invalid settings JSON": "設定JSONの形式が正しくありません", "Could not read settings file": "設定ファイルを読み込めませんでした",
+      "Download animated WebP": "アニメーションWebPを書き出す",
+      "Exporting animated WebP": "アニメーションWebPを書き出しています",
+      "Animated WebP exported": "アニメーションWebPを書き出しました",
+      "Set a non-zero rotation speed to export": "書き出すには回転速度を0以外にしてください",
+      "The animation is too long to export at this speed": "この回転速度ではアニメーションが長すぎて書き出せません",
+      "Animated WebP export is not supported by this browser": "このブラウザーはアニメーションWebPの書き出しに対応していません",
+      "Could not export animated WebP": "アニメーションWebPを書き出せませんでした"
     };
     const tr = s => JA ? (JA_TRANSLATIONS[s] ?? s) : s;
     document.documentElement.lang = JA ? "ja" : "en";
@@ -650,7 +661,7 @@
             el.style.fontSize = fs + "px";
             el.style.fontWeight = fw;
             row.appendChild(el);
-            chars.push({ el, a: (cum + widths[j] / 2) * k / R });
+            chars.push({ el, text: ch, a: (cum + widths[j] / 2) * k / R });
             cum += widths[j];
           });
         }
@@ -1104,9 +1115,263 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       say("Settings exported");
     });
+
+    function writeUint24(view, offset, value) {
+      view.setUint8(offset, value & 255);
+      view.setUint8(offset + 1, (value >>> 8) & 255);
+      view.setUint8(offset + 2, (value >>> 16) & 255);
+    }
+
+    function webpChunk(type, payload) {
+      const chunk = new Uint8Array(8 + payload.length + (payload.length & 1));
+      for (let i = 0; i < 4; i++) chunk[i] = type.charCodeAt(i);
+      new DataView(chunk.buffer).setUint32(4, payload.length, true);
+      chunk.set(payload, 8);
+      return chunk;
+    }
+
+    function getWebpFrameChunks(buffer) {
+      const bytes = new Uint8Array(buffer);
+      if (bytes.length < 12 || String.fromCharCode(...bytes.subarray(8, 12)) !== "WEBP") {
+        throw new Error("Canvas did not produce a WebP image");
+      }
+      const chunks = [];
+      const view = new DataView(buffer);
+      for (let offset = 12; offset + 8 <= bytes.length;) {
+        const type = String.fromCharCode(...bytes.subarray(offset, offset + 4));
+        const size = view.getUint32(offset + 4, true);
+        const end = offset + 8 + size;
+        if (end > bytes.length) throw new Error("Invalid WebP frame data");
+        if (type === "ALPH" || type === "VP8 " || type === "VP8L") {
+          chunks.push(webpChunk(type, bytes.slice(offset + 8, end)));
+        }
+        offset = end + (size & 1);
+      }
+      if (!chunks.some(chunk => String.fromCharCode(...chunk.subarray(0, 4)) === "VP8 "
+        || String.fromCharCode(...chunk.subarray(0, 4)) === "VP8L")) {
+        throw new Error("WebP image data is missing");
+      }
+      return chunks;
+    }
+
+    function makeAnimatedWebp(width, height, frameChunks, frameDuration) {
+      const extended = new Uint8Array(10);
+      extended[0] = 2;
+      writeUint24(new DataView(extended.buffer), 4, width - 1);
+      writeUint24(new DataView(extended.buffer), 7, height - 1);
+      const animation = new Uint8Array(6);
+      const animationView = new DataView(animation.buffer);
+      animationView.setUint16(4, 0, true);
+      const chunks = [webpChunk("VP8X", extended), webpChunk("ANIM", animation)];
+      for (const imageChunks of frameChunks) {
+        const header = new Uint8Array(16);
+        const headerView = new DataView(header.buffer);
+        writeUint24(headerView, 6, width - 1);
+        writeUint24(headerView, 9, height - 1);
+        writeUint24(headerView, 12, frameDuration);
+        header[15] = 2;
+        const frameData = new Uint8Array(imageChunks.reduce((n, chunk) => n + chunk.length, 0));
+        let offset = 0;
+        for (const chunk of imageChunks) {
+          frameData.set(chunk, offset);
+          offset += chunk.length;
+        }
+        const framePayload = new Uint8Array(header.length + frameData.length);
+        framePayload.set(header);
+        framePayload.set(frameData, header.length);
+        chunks.push(webpChunk("ANMF", framePayload));
+      }
+      const bodySize = 4 + chunks.reduce((n, chunk) => n + chunk.length, 0);
+      const output = new Uint8Array(8 + bodySize);
+      output.set([82, 73, 70, 70]);
+      new DataView(output.buffer).setUint32(4, bodySize, true);
+      output.set([87, 69, 66, 80], 8);
+      let offset = 12;
+      for (const chunk of chunks) {
+        output.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return new Blob([output], { type: "image/webp" });
+    }
+
+    function drawExportFrame(context, width, height, pixelScale, sceneScale, frameSpin) {
+      const R = CFG.radius, P = persp(), tx = CFG.tiltX * Math.PI / 180, tz = CFG.tiltZ * Math.PI / 180;
+      const cosX = Math.cos(tx), sinX = Math.sin(tx), cosZ = Math.cos(tz), sinZ = Math.sin(tz);
+      const centerX = width / 2, centerY = height / 2;
+      const transformPoint = (x, y, z) => {
+        const rotatedY = y * cosX + z * sinX;
+        const rotatedZ = -y * sinX + z * cosX;
+        return {
+          x: x * cosZ - rotatedY * sinZ,
+          y: x * sinZ + rotatedY * cosZ,
+          z: rotatedZ
+        };
+      };
+      const project = (x, y, z) => {
+        const point = transformPoint(x, y, z);
+        const perspectiveScale = P / (P - point.z);
+        return {
+          x: centerX + point.x * perspectiveScale * pixelScale * sceneScale,
+          y: centerY + point.y * perspectiveScale * pixelScale * sceneScale,
+          z: point.z
+        };
+      };
+      const projectAxis = (point, axis) => {
+        const transformedPoint = transformPoint(point.x, point.y, point.z);
+        const transformedAxis = transformPoint(axis.x, axis.y, axis.z);
+        const denominator = P - transformedPoint.z;
+        const factor = P / (denominator * denominator) * pixelScale * sceneScale;
+        return {
+          x: factor * (transformedAxis.x * denominator + transformedPoint.x * transformedAxis.z),
+          y: factor * (transformedAxis.y * denominator + transformedPoint.y * transformedAxis.z)
+        };
+      };
+
+      context.fillStyle = CFG.bgColor;
+      context.fillRect(0, 0, width, height);
+      context.font = `${CFG.fontWeight} ${CFG.fontSize}px ${familyCss(CFG.fontFamily)}`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.lineJoin = "round";
+
+      if (CFG.borderMode !== "none" && CFG.borderWidth > 0) {
+        context.strokeStyle = CFG.borderColor;
+        context.lineWidth = CFG.borderWidth * pixelScale * sceneScale;
+        context.setLineDash(CFG.borderStyle === "dashed" ? [8, 5].map(v => v * pixelScale * sceneScale)
+          : CFG.borderStyle === "dotted" ? [context.lineWidth, context.lineWidth * 1.5] : []);
+        const drawBorder = (border, radiusOffset = 0) => {
+          const direction = CFG.alternate && border.row % 2 ? -1 : 1;
+          const rotation = CFG.borderRotation === "fixed" ? 0 : direction * frameSpin;
+          const radius = R - radiusOffset;
+          context.beginPath();
+          for (let i = 0; i <= 96; i++) {
+            const angle = i * Math.PI * 2 / 96;
+            const x0 = radius * Math.cos(angle), z0 = radius * Math.sin(angle);
+            const x = x0 * Math.cos(rotation) + z0 * Math.sin(rotation);
+            const z = -x0 * Math.sin(rotation) + z0 * Math.cos(rotation);
+            const point = project(x, border.y, z);
+            if (i === 0) context.moveTo(point.x, point.y);
+            else context.lineTo(point.x, point.y);
+          }
+          context.closePath();
+          context.stroke();
+        };
+        for (const border of borderData) {
+          if (CFG.borderStyle === "double") {
+            drawBorder(border, CFG.borderWidth * 0.75);
+            drawBorder(border, -CFG.borderWidth * 0.75);
+          } else drawBorder(border);
+        }
+        context.setLineDash([]);
+      }
+
+      for (let r = 0; r < rowsData.length; r++) {
+        const row = rowsData[r];
+        const direction = CFG.alternate && r % 2 ? -1 : 1;
+        for (const character of row.chars) {
+          const angle = character.a + direction * frameSpin + row.phase;
+          if (!CFG.backVisible && Math.cos(angle + tx) <= 0) continue;
+          const x = R * Math.sin(angle), z = R * Math.cos(angle);
+          const point3d = { x, y: row.y, z };
+          const projected = project(x, row.y, z);
+          const depth = Math.max(0, Math.min(1, (projected.z / R + 1) / 2));
+          const depthScale = 1 - CFG.depthScale * (1 - depth);
+          const opacity = CFG.minOpacity + (1 - CFG.minOpacity) * Math.pow(depth, CFG.fade);
+          const cos = Math.cos(angle), sin = Math.sin(angle);
+          const horizontal = projectAxis(point3d, { x: cos, y: 0, z: -sin });
+          const vertical = projectAxis(point3d, { x: 0, y: 1, z: 0 });
+          context.save();
+          context.globalAlpha = opacity;
+          context.setTransform(horizontal.x * depthScale, horizontal.y * depthScale,
+            vertical.x * depthScale, vertical.y * depthScale, projected.x, projected.y);
+          if (CFG.strokeWidth > 0) {
+            context.strokeStyle = CFG.strokeColor;
+            context.lineWidth = CFG.strokeWidth / depthScale;
+            context.strokeText(character.text === " " ? "\u00a0" : character.text, 0, 0);
+          }
+          context.fillStyle = CFG.textColor;
+          context.fillText(character.text === " " ? "\u00a0" : character.text, 0, 0);
+          context.restore();
+        }
+      }
+    }
+
+    const exportWebp = mk("Download animated WebP", async () => {
+      const exportFps = 60;
+      const maxFrames = exportFps * 25;
+      const maxDimension = 1920;
+      if (!CFG.speed) {
+        say("Set a non-zero rotation speed to export");
+        return;
+      }
+      const period = 360 / Math.abs(CFG.speed);
+      const frameCount = Math.ceil(period * exportFps);
+      if (frameCount > maxFrames) {
+        say("The animation is too long to export at this speed");
+        return;
+      }
+      if (!HTMLCanvasElement.prototype.toBlob) {
+        say("Animated WebP export is not supported by this browser");
+        return;
+      }
+
+      exportWebp.disabled = true;
+      const startSpin = spin;
+      try {
+        if (document.fonts) await document.fonts.ready;
+        const pixelScale = Math.min(2, maxDimension / Math.max(avail.w, avail.h));
+        const width = Math.max(1, Math.round(avail.w * pixelScale));
+        const height = Math.max(1, Math.round(avail.h * pixelScale));
+        const R = CFG.radius, fs = CFG.fontSize, P = persp();
+        const frontScale = P / (P - R);
+        const w0 = (2 * R + fs * 2) * frontScale + 40;
+        const h0 = (Math.max(0, CFG.text.split("\n").length - 1) * fs * CFG.rowGap
+          + 2 * R * Math.abs(Math.sin(CFG.tiltX * Math.PI / 180)) + fs * 2) * frontScale + 40;
+        const tz = CFG.tiltZ * Math.PI / 180;
+        const sceneWidth = w0 * Math.abs(Math.cos(tz)) + h0 * Math.abs(Math.sin(tz));
+        const sceneHeight = w0 * Math.abs(Math.sin(tz)) + h0 * Math.abs(Math.cos(tz));
+        const sceneScale = Math.min(1, avail.w / sceneWidth, avail.h / sceneHeight);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Could not create an export canvas");
+        const duration = Math.max(1, Math.round(period * 1000 / frameCount));
+        const frames = [];
+        for (let i = 0; i < frameCount; i++) {
+          drawExportFrame(context, width, height, pixelScale, sceneScale,
+            startSpin + Math.sign(CFG.speed) * Math.PI * 2 * i / frameCount);
+          const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob(image => image ? resolve(image) : reject(new Error("WebP frame encoding failed")), "image/webp", 0.95);
+          });
+          if (blob.type !== "image/webp") {
+            say("Animated WebP export is not supported by this browser");
+            return;
+          }
+          frames.push(getWebpFrameChunks(await blob.arrayBuffer()));
+          status.textContent = `${tr("Exporting animated WebP")} (${i + 1}/${frameCount})`;
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        const blob = makeAnimatedWebp(width, height, frames, duration);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "cylinder-text-animation.webp";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        say("Animated WebP exported");
+      } catch (error) {
+        console.error("Animated WebP export failed", error);
+        say("Could not export animated WebP");
+      } finally {
+        exportWebp.disabled = false;
+      }
+    });
     const importJson = mk("Import JSON", () => jsonFile.click());
     const jsonActions = row(exportJson, importJson);
     jsonActions.classList.add("json-actions");
+    const webpActions = row(exportWebp);
+    webpActions.classList.add("webp-actions");
 
     function renderSel(selected) {
       sel.innerHTML = "";
@@ -1139,6 +1404,7 @@
     pr.append(
       row(sel, mk("Save", openSave), mk("Delete", () => { if (!has(sel.value)) return; delete presets[sel.value]; persist(); clearPresetState(); renderSel(); say("Deleted"); })),
       jsonActions,
+      webpActions,
       status
     );
     pr.appendChild(jsonFile);
