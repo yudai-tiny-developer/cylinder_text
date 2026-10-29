@@ -69,7 +69,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Show back side | Controls whether text remains visible on the back of the cylinder. |
 | Pause | Stops and resumes animation. |
 
-Use **Reset to defaults** to restore the original configuration.
+Hold **Reset to defaults** for one second, then release while the pointer is still over the button to restore the original configuration. The button's progress indicator turns green when the reset is ready; releasing sooner or outside the button cancels it.
 
 ## Fonts
 
@@ -93,6 +93,8 @@ The preset selector saves named snapshots of the animation settings in browser `
 4. Use **Delete** to remove the selected preset.
 
 Presets remain on the current browser and origin. Clearing site data removes them. Preset names are limited to 40 characters. If browser storage is unavailable, the app reports that it cannot save the preset.
+
+Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file.
 
 ## Privacy
 

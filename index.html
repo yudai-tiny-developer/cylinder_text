@@ -184,15 +184,50 @@
       grid-template-columns: 7.5em 1fr;
     }
 
+    .f.font-field {
+      grid-template-columns: 7.5em minmax(0, 1fr) auto;
+    }
+
+    .font-load-button {
+      width: 2.4em;
+      height: 2.4em;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
     .f input[type=text] {
       width: 100%;
       box-sizing: border-box;
       padding: 6px 8px;
       border: 1px solid var(--line);
       border-radius: 6px;
-      background: transparent;
+      background-color: var(--bg);
       color: var(--ink);
       font: inherit;
+    }
+
+    .f input[type=text]:-webkit-autofill,
+    .f input[type=text]:-webkit-autofill:hover,
+    .f input[type=text]:-webkit-autofill:focus {
+      -webkit-box-shadow: 0 0 0 1000px var(--bg) inset;
+      -webkit-text-fill-color: var(--ink);
+    }
+
+    .font-load-status {
+      grid-column: 2 / -1;
+      margin-top: -6px;
+      font-size: 12px;
+      line-height: 1.3;
+      opacity: .75;
+    }
+
+    .font-load-status:empty {
+      display: none;
     }
 
     .f textarea {
@@ -240,6 +275,25 @@
       gap: 8px;
     }
 
+    .reset-button {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      --hold-progress: 0;
+      --hold-color: #e85d5d;
+    }
+
+    .reset-button::before {
+      position: absolute;
+      z-index: -1;
+      inset: 0 auto 0 0;
+      width: calc(var(--hold-progress) * 1%);
+      background: var(--hold-color);
+      opacity: .35;
+      content: "";
+      pointer-events: none;
+    }
+
     .presets {
       display: grid;
       gap: 8px;
@@ -250,6 +304,10 @@
     .presets .prow {
       display: flex;
       gap: 8px;
+    }
+
+    .presets .json-actions button {
+      flex: 1;
     }
 
     .presets .prow> :first-child {
@@ -485,10 +543,14 @@
       "Show back side": "裏側を表示", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
       "Load installed fonts": "インストール済みフォントを読込", "Loaded": "読み込み済み",
       "Couldn't access installed fonts": "フォント一覧を取得できませんでした",
+      "Hold for 1 second to reset": "1秒間押し続けて離すと初期値に戻します",
       "Any installed font name (e.g. Arial)": "インストール済みフォント名を入力（例: Meiryo）",
       "Presets": "プリセット", "Select a preset": "プリセットを選択", "Preset name": "プリセット名", "Save": "保存", "Delete": "削除", "Cancel": "キャンセル", "This will overwrite the existing preset": "同じ名前のプリセットを上書きします",
       "Saved": "保存しました", "Deleted": "削除しました", "Loaded preset": "読み込みました",
-      "This browser cannot save presets": "このブラウザには保存できません"
+      "This browser cannot save presets": "このブラウザには保存できません",
+      "Download JSON": "JSONを書き出す", "Import JSON": "JSONを読み込む",
+      "Settings exported": "設定をJSONに書き出しました", "Settings imported": "設定を読み込みました",
+      "Invalid settings JSON": "設定JSONの形式が正しくありません", "Could not read settings file": "設定ファイルを読み込めませんでした"
     };
     const tr = s => JA ? (JA_TRANSLATIONS[s] ?? s) : s;
     document.documentElement.lang = JA ? "ja" : "en";
@@ -645,7 +707,7 @@
         currentCategory = u.category;
       }
       const wrap = document.createElement("div");
-      wrap.className = "f" + (u.type ? " wide" : "");
+      wrap.className = "f" + (u.type ? " wide" : "") + (u.k === "fontFamily" ? " font-field" : "");
       const name = document.createElement(u.type === "color" ? "span" : "label");
       name.textContent = tr(u.label);
       if (u.type !== "color") name.htmlFor = "f-" + u.k;   // Do not associate color pickers with labels to avoid opening them across the whole row.
@@ -667,6 +729,31 @@
       }
       else if (u.type === "bool") { inp.type = "checkbox"; inp.checked = CFG[u.k]; inp.style.justifySelf = "start"; }
       else { inp.type = "range"; inp.min = u.min; inp.max = u.max; inp.step = u.step; inp.value = CFG[u.k]; out = document.createElement("input"); out.type = "number"; out.min = u.min; out.max = u.max; out.step = u.step; out.value = CFG[u.k]; out.setAttribute("aria-label", tr(u.label)); }
+      let fontLoadButton = null;
+      let fontLoadStatus = null;
+      if (u.k === "fontFamily" && "queryLocalFonts" in window) {
+        fontLoadButton = document.createElement("button");
+        fontLoadButton.type = "button";
+        fontLoadButton.className = "font-load-button";
+        fontLoadButton.textContent = "🔤";
+        fontLoadButton.title = tr("Load installed fonts");
+        fontLoadButton.setAttribute("aria-label", tr("Load installed fonts"));
+        fontLoadStatus = document.createElement("span");
+        fontLoadStatus.className = "font-load-status";
+        fontLoadStatus.setAttribute("role", "status");
+        fontLoadStatus.setAttribute("aria-live", "polite");
+        fontLoadButton.addEventListener("click", async () => {
+          try {
+            const names = [...new Set((await window.queryLocalFonts()).map(f => f.family))].sort();
+            const dl = $("dl-fontFamily");
+            dl.innerHTML = "";
+            [...new Set([...FONT_PRESETS, ...names])].forEach(n => dl.appendChild(new Option(n)));
+            fontLoadStatus.textContent = `${tr("Loaded")} (${names.length})`;
+          } catch (e) {
+            fontLoadStatus.textContent = tr("Couldn't access installed fonts");
+          }
+        });
+      }
       inp.addEventListener("input", () => {
         CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
         if (out && document.activeElement !== out) out.value = CFG[u.k];   // Do not overwrite the value while it is being edited.
@@ -684,7 +771,10 @@
         out.addEventListener("change", () => { out.value = CFG[u.k]; });
       }
       inputs[u.k] = { inp, out, u, wrap };
-      wrap.append(name, inp); if (out) wrap.append(out);
+      wrap.append(name, inp);
+      if (fontLoadButton) wrap.append(fontLoadButton);
+      if (fontLoadStatus) wrap.append(fontLoadStatus);
+      if (out) wrap.append(out);
       fields.appendChild(wrap);
     });
     function syncBorderControls() {
@@ -699,7 +789,10 @@
     syncBorderControls();
     const btns = document.createElement("div"); btns.className = "btns";
     const reset = document.createElement("button"); reset.textContent = tr("Reset to defaults");
-    reset.onclick = () => {
+    reset.classList.add("reset-button");
+    reset.title = tr("Hold for 1 second to reset");
+    reset.setAttribute("aria-label", `${tr("Reset to defaults")}. ${tr("Hold for 1 second to reset")}`);
+    const resetToDefaults = () => {
       Object.assign(CFG, DEFAULTS);
       for (const k in inputs) {
         const { inp, out, u } = inputs[k];
@@ -709,19 +802,66 @@
       syncBorderControls();
       rebuild();
     };
-    // Load installed fonts in browsers that support the Local Font Access API.
-    if ("queryLocalFonts" in window) {
-      const b = document.createElement("button"); b.type = "button"; b.textContent = tr("Load installed fonts");
-      b.onclick = async () => {
-        try {
-          const names = [...new Set((await window.queryLocalFonts()).map(f => f.family))].sort();
-          const dl = $("dl-fontFamily"); dl.innerHTML = "";
-          FONT_PRESETS.concat(names).forEach(n => dl.appendChild(new Option(n)));
-          b.textContent = tr("Loaded") + ` (${names.length})`;
-        } catch (e) { b.textContent = tr("Couldn't access installed fonts"); }
-      };
-      btns.appendChild(b);
+    let hold = null;
+    function updateHoldProgress() {
+      if (!hold) return;
+      const elapsed = performance.now() - hold.startedAt;
+      reset.style.setProperty("--hold-progress", Math.min(100, elapsed / 10));
+      reset.style.setProperty("--hold-color", elapsed >= 1000 && hold.inside ? "#35a66f" : "#e85d5d");
+      hold.frame = requestAnimationFrame(updateHoldProgress);
     }
+    function startHold(source, pointerId = null) {
+      if (hold) return;
+      hold = { startedAt: performance.now(), source, pointerId, frame: 0, inside: true };
+      reset.classList.add("holding");
+      updateHoldProgress();
+    }
+    function updatePointerPosition(e) {
+      if (hold?.source !== "pointer" || hold.pointerId !== e.pointerId) return;
+      const rect = reset.getBoundingClientRect();
+      hold.inside = e.clientX >= rect.left && e.clientX <= rect.right
+        && e.clientY >= rect.top && e.clientY <= rect.bottom;
+    }
+    function finishHold(commit) {
+      if (!hold) return;
+      const elapsed = performance.now() - hold.startedAt;
+      cancelAnimationFrame(hold.frame);
+      hold = null;
+      reset.style.setProperty("--hold-progress", "0");
+      reset.style.setProperty("--hold-color", "#e85d5d");
+      reset.classList.remove("holding");
+      if (commit && elapsed >= 1000) resetToDefaults();
+    }
+    reset.addEventListener("pointerdown", e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      startHold("pointer", e.pointerId);
+      reset.setPointerCapture(e.pointerId);
+    });
+    reset.addEventListener("pointermove", updatePointerPosition);
+    reset.addEventListener("pointerup", e => {
+      if (hold?.source === "pointer" && hold.pointerId === e.pointerId) {
+        updatePointerPosition(e);
+        finishHold(hold.inside);
+      }
+    });
+    reset.addEventListener("pointercancel", () => finishHold(false));
+    reset.addEventListener("lostpointercapture", () => {
+      if (hold?.source === "pointer") finishHold(false);
+    });
+    reset.addEventListener("keydown", e => {
+      if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+        e.preventDefault();
+        startHold("keyboard");
+      }
+    });
+    reset.addEventListener("keyup", e => {
+      if ((e.key === " " || e.key === "Enter") && hold?.source === "keyboard") {
+        e.preventDefault();
+        finishHold(true);
+      }
+    });
+    window.addEventListener("blur", () => finishHold(false));
     /* ---- Save and load presets with localStorage; use JSON import/export as a fallback when unavailable. ---- */
     const STORE_KEY = "cylinderTextPresets";
     let presets = {}, persisted = true;
@@ -743,6 +883,23 @@
       }
       syncBorderControls();
       rebuild();
+    }
+
+    function validateImportedSettings(obj) {
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
+      const settings = {};
+      for (const u of UI) {
+        if (!Object.prototype.hasOwnProperty.call(obj, u.k)) continue;
+        const v = obj[u.k];
+        const valid = u.type === "bool" ? typeof v === "boolean"
+          : u.type === "color" ? typeof v === "string" && /^#[\da-f]{6}$/i.test(v)
+          : u.type === "select" ? typeof v === "string" && u.options.some(o => o.value === v)
+          : u.type === "text" ? typeof v === "string"
+          : typeof v === "number" && Number.isFinite(v);
+        if (!valid) return null;
+        settings[u.k] = v;
+      }
+      return Object.keys(settings).length ? settings : null;
     }
 
     const pr = document.createElement("div"); pr.className = "presets";
@@ -773,6 +930,47 @@
     const say = s => { status.textContent = tr(s); };
     const mk = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = tr(label); b.onclick = fn; return b; };
     const row = (...els) => { const d = document.createElement("div"); d.className = "prow"; d.append(...els); return d; };
+    const jsonFile = document.createElement("input");
+    jsonFile.type = "file";
+    jsonFile.accept = ".json,application/json";
+    jsonFile.hidden = true;
+    jsonFile.addEventListener("change", async () => {
+      const file = jsonFile.files?.[0];
+      if (!file) return;
+      try {
+        let parsed;
+        try {
+          parsed = JSON.parse(await file.text());
+        } catch {
+          say("Invalid settings JSON");
+          return;
+        }
+        const settings = validateImportedSettings(parsed);
+        if (!settings) {
+          say("Invalid settings JSON");
+          return;
+        }
+        applySettings(settings);
+        say("Settings imported");
+      } catch {
+        say("Could not read settings file");
+      } finally {
+        jsonFile.value = "";
+      }
+    });
+    const exportJson = mk("Download JSON", () => {
+      const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "cylinder-text-settings.json";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      say("Settings exported");
+    });
+    const importJson = mk("Import JSON", () => jsonFile.click());
+    const jsonActions = row(exportJson, importJson);
+    jsonActions.classList.add("json-actions");
 
     function renderSel(selected) {
       sel.innerHTML = "";
@@ -796,8 +994,10 @@
     renderSel();
     pr.append(
       row(sel, mk("Save", openSave), mk("Delete", () => { if (!has(sel.value)) return; delete presets[sel.value]; persist(); renderSel(); say("Deleted"); })),
+      jsonActions,
       status
     );
+    pr.appendChild(jsonFile);
     fields.prepend(pr);
 
     btns.appendChild(reset); fields.appendChild(btns);
