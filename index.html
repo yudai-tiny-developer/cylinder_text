@@ -1302,19 +1302,19 @@
     }
 
     const exportWebp = mk("Download animated WebP", async () => {
-      const exportFps = 60;
-      const maxFrames = exportFps * 25;
+      const frameDuration = 17;
+      const maxDuration = 25;
       const maxDimension = 1920;
       if (!CFG.speed) {
         say("Set a non-zero rotation speed to export");
         return;
       }
       const period = 360 / Math.abs(CFG.speed);
-      const frameCount = Math.ceil(period * exportFps);
-      if (frameCount > maxFrames) {
+      if (period > maxDuration) {
         say("The animation is too long to export at this speed");
         return;
       }
+      const frameCount = Math.max(1, Math.round(period * 1000 / frameDuration));
       if (!HTMLCanvasElement.prototype.toBlob) {
         say("Animated WebP export is not supported by this browser");
         return;
@@ -1342,9 +1342,7 @@
         const context = canvas.getContext("2d");
         if (!context) throw new Error("Could not create an export canvas");
         const frames = [];
-        const loopDuration = Math.round(period * 1000);
-        const frameDurations = Array.from({ length: frameCount }, (_, i) =>
-          Math.max(1, Math.round((i + 1) * loopDuration / frameCount) - Math.round(i * loopDuration / frameCount)));
+        const frameDurations = Array(frameCount).fill(frameDuration);
         for (let i = 0; i < frameCount; i++) {
           drawExportFrame(context, width, height, pixelScale, sceneScale,
             startSpin + Math.sign(CFG.speed) * Math.PI * 2 * i / frameCount);
