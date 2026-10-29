@@ -1325,8 +1325,6 @@
       try {
         if (document.fonts) await document.fonts.ready;
         const pixelScale = Math.min(2, maxDimension / Math.max(avail.w, avail.h));
-        const width = Math.max(1, Math.round(avail.w * pixelScale));
-        const height = Math.max(1, Math.round(avail.h * pixelScale));
         const R = CFG.radius, fs = CFG.fontSize, P = persp();
         const frontScale = P / (P - R);
         const w0 = (2 * R + fs * 2) * frontScale + 40;
@@ -1336,6 +1334,8 @@
         const sceneWidth = w0 * Math.abs(Math.cos(tz)) + h0 * Math.abs(Math.sin(tz));
         const sceneHeight = w0 * Math.abs(Math.sin(tz)) + h0 * Math.abs(Math.cos(tz));
         const sceneScale = Math.min(1, avail.w / sceneWidth, avail.h / sceneHeight);
+        const width = Math.max(1, Math.round(sceneWidth * sceneScale * pixelScale));
+        const height = Math.max(1, Math.round(sceneHeight * sceneScale * pixelScale));
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
