@@ -814,6 +814,7 @@
       inp.addEventListener("input", () => {
         CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
         if (out && document.activeElement !== out) out.value = CFG[u.k];   // Do not overwrite the value while it is being edited.
+        recordSettingsHistory();
         scheduleSettingsPersistence();
         updatePresetState();
         if (u.k === "borderMode") syncBorderControls();
@@ -861,6 +862,7 @@
         if (out) out.value = CFG[k];
       }
       clearPresetState();
+      recordSettingsHistory(true);
       persistCurrentSettings();
       syncBorderControls();
       updateSceneSettings();
@@ -934,8 +936,61 @@
     const has = n => Object.prototype.hasOwnProperty.call(presets, n);
     const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(presets)); persisted = true; } catch (e) { persisted = false; } };
     const snapshot = () => Object.fromEntries(UI.map(u => [u.k, CFG[u.k]]));
+    const settingsHistory = [snapshot()];
+    const maxHistoryEntries = 100;
+    let historyIndex = 0;
+    let historyGroupTimer = 0;
 
-    function applySettings(obj) {
+    function recordSettingsHistory(forceNewEntry = false) {
+      const state = snapshot();
+      if (JSON.stringify(state) === JSON.stringify(settingsHistory[historyIndex])) return;
+      if (forceNewEntry) {
+        clearTimeout(historyGroupTimer);
+        historyGroupTimer = 0;
+      }
+      if (forceNewEntry || !historyGroupTimer) {
+        settingsHistory.splice(historyIndex + 1);
+        settingsHistory.push(state);
+        historyIndex++;
+        if (settingsHistory.length > maxHistoryEntries) {
+          settingsHistory.shift();
+          historyIndex--;
+        }
+      } else {
+        settingsHistory[historyIndex] = state;
+      }
+      if (!forceNewEntry) {
+        clearTimeout(historyGroupTimer);
+        historyGroupTimer = setTimeout(() => { historyGroupTimer = 0; }, 500);
+      }
+    }
+
+    function applyHistoryEntry(index) {
+      clearTimeout(historyGroupTimer);
+      historyGroupTimer = 0;
+      historyIndex = index;
+      applySettings(settingsHistory[historyIndex], false);
+      updatePresetState();
+    }
+
+    document.addEventListener("keydown", e => {
+      if (!e.ctrlKey || e.altKey || e.metaKey) return;
+      const key = e.key.toLowerCase();
+      if (key !== "z" && key !== "y") return;
+      if (e.target instanceof Element && e.target.matches('input[type="text"], textarea, [contenteditable="true"]')) return;
+      const redo = key === "y" || (key === "z" && e.shiftKey);
+      if (redo) {
+        if (historyIndex >= settingsHistory.length - 1) return;
+        e.preventDefault();
+        applyHistoryEntry(historyIndex + 1);
+      } else {
+        if (historyIndex <= 0) return;
+        e.preventDefault();
+        applyHistoryEntry(historyIndex - 1);
+      }
+    });
+
+    function applySettings(obj, recordHistory = true) {
       for (const u of UI) {
         let v = obj[u.k];
         const t = u.type === "bool" ? "boolean" : ["text", "color", "select"].includes(u.type) ? "string" : "number";
@@ -950,6 +1005,7 @@
       updateSceneSettings();
       scheduleFrame();
       rebuild();
+      if (recordHistory) recordSettingsHistory(true);
       persistCurrentSettings();
     }
 

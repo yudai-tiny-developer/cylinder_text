@@ -15,6 +15,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Optional mirrored/back-side text
 - Pause/resume and reset-to-default controls
 - Automatically restores the last-used settings on the next visit
+- Undo and redo setting changes with Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z)
 - Named presets stored locally in the browser
 - English/Japanese interface selection based on the browser language
 - Installed-font discovery where the browser supports the Local Font Access API
@@ -71,6 +72,8 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Pause | Stops and resumes animation. |
 
 Hold **Reset to defaults** for one second, then release while the pointer is still over the button to restore the original configuration. You can also hold Space or Enter while the button is focused. The button's progress indicator turns green when the reset is ready; releasing sooner or releasing the pointer outside the button cancels it.
+
+Use **Ctrl+Z** to undo setting changes and **Ctrl+Y** or **Ctrl+Shift+Z** to redo them. Text fields keep the browser's native text-editing undo and redo.
 
 ## Fonts
 
