@@ -8,7 +8,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Multiple text rows with independent, alternating rotation
 - Adjustable font, weight, size, letter spacing, and row spacing
 - Text and outline colors, background color, and outline width
-- Optional top-and-bottom borders around all rows or each individual row, with independently adjustable top and bottom spacing and customizable color and dotted, dashed, solid, or double styles
+- Optional top-and-bottom borders around all rows or each individual row, with independently adjustable top and bottom spacing and customizable color, dotted, dashed, solid, double, or image styles
 - Optional border rotation synchronized with the text
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
@@ -42,7 +42,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 
 | Setting | Description |
 | --- | --- |
-| Text | Text to display. Put each line on a separate row. |
+| Text | Text to display. Put each line on a separate row. Multiple lines share the same starting position. |
 | Separator | Text inserted between repeated units. |
 | Font | Font family name or comma-separated font stack. |
 | Weight | Font weight, from 100 to 900. |
@@ -52,7 +52,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Border color | Color of the border lines. |
 | Background | Stage background color. |
 | Border | Adds no border, top-and-bottom borders around all rows, or top-and-bottom borders around each row. |
-| Border style | Sets the border to dotted, dashed, solid, or double. |
+| Border style | Sets the border to dotted, dashed, solid, double, or an uploaded image. Image borders support PNG, JPEG, WebP, and GIF. |
 | Border width | Sets the border thickness from 0 to 24 pixels. |
 | Top spacing | Sets the gap between the text and the top border from 0 to 48 pixels. |
 | Bottom spacing | Sets the gap between the text and the bottom border from 0 to 48 pixels. |
@@ -99,13 +99,13 @@ The preset selector saves named snapshots of the animation settings in browser `
 
 After changing a setting, the selector returns to its placeholder. Returning all settings to the preset values selects it again. Presets remain on the current browser and origin. Clearing site data removes them. Preset names are limited to 40 characters. If browser storage is unavailable, the app reports that it cannot save the preset.
 
-Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file.
+Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file. An uploaded border image is embedded as a Base64 data URL in JSON exports and presets, so it is restored without uploading the image again.
 
 Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps, adjusts frame delays to match the rotation period, and replaces each full-canvas frame without disposal to avoid frame compositing artifacts. The output is cropped to the animation bounds with a small safety margin, scaled to up to twice the available scene dimensions, and capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, and exports longer than 25 seconds are not supported. This feature requires browser support for WebP canvas encoding.
 
 ## Privacy
 
-The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. The last-used settings and saved presets are stored only in local browser storage.
+The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. The last-used settings and saved presets, including uploaded border images, are stored only in local browser storage.
 
 A hosted copy may contact Google Fonts and the hosting provider to load application resources. Those network requests are subject to the privacy policies of those services and the host. For details about app data handling, see [Privacy Policy](./privacy-policy.html).
 

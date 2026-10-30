@@ -98,6 +98,15 @@
       pointer-events: none;
     }
 
+    .border-image-segment {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: var(--bw, 2px);
+      pointer-events: none;
+      background-repeat: no-repeat;
+    }
+
     .hide-back .ch {
       backface-visibility: hidden;
     }
@@ -185,6 +194,20 @@
 
     .f.font-field {
       grid-template-columns: 7.5em minmax(0, 1fr) auto;
+    }
+
+    .f.border-style-field {
+      grid-template-columns: 7.5em minmax(0, 1fr) auto;
+    }
+
+    .border-image-upload {
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
     }
 
     .font-load-button {
@@ -492,6 +515,7 @@
       borderMode: "none",
       borderColor: "#f2b45a",
       borderStyle: "solid",
+      borderImage: "",
       borderWidth: 8,
       borderTopSpacing: 8,
       borderBottomSpacing: 8,
@@ -514,6 +538,7 @@
     /* UI definitions: rebuild=true marks settings that require rebuilding the text layout. */
     const UI = [
       { k: "text", label: "Text", category: "Text appearance", type: "text", multiline: true, rebuild: true },
+      { k: "alternate", label: "Alternate direction per row", category: "Text appearance", type: "bool" },
       { k: "separator", label: "Separator", category: "Text appearance", type: "text", rebuild: true },
       { k: "fontFamily", label: "Font", category: "Text appearance", type: "text", list: FONT_PRESETS, rebuild: true },
       { k: "fontWeight", label: "Weight", category: "Text appearance", min: 100, max: 900, step: 100, rebuild: true },
@@ -526,14 +551,15 @@
         ]
       },
       {
-        k: "borderStyle", label: "Border style", category: "Border", type: "select", options: [
+        k: "borderStyle", label: "Border style", category: "Border", type: "select", rebuild: true, options: [
           { label: "Dotted", value: "dotted" },
           { label: "Dashed", value: "dashed" },
           { label: "Solid", value: "solid" },
-          { label: "Double", value: "double" }
+          { label: "Double", value: "double" },
+          { label: "Image file", value: "image" }
         ]
       },
-      { k: "borderWidth", label: "Border width", category: "Border", min: 0, max: 24, step: 0.5 },
+      { k: "borderWidth", label: "Border width", category: "Border", min: 0, max: 48, step: 0.5 },
       { k: "borderTopSpacing", label: "Top spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
       { k: "borderBottomSpacing", label: "Bottom spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
       {
@@ -551,7 +577,6 @@
       { k: "letterSpacing", label: "Letter spacing", category: "Cylinder layout", min: 0, max: 1, step: 0.01, rebuild: true },
       { k: "rowGap", label: "Row gap", category: "Cylinder layout", min: 0.8, max: 3, step: 0.05, rebuild: true },
       { k: "repeat", label: "Repeat", category: "Cylinder layout", type: "bool", rebuild: true },
-      { k: "alternate", label: "Alternate direction per row", category: "Cylinder layout", type: "bool" },
       { k: "speed", label: "Rotation speed", category: "Motion and display", min: -180, max: 180, step: 1 },
       { k: "tiltX", label: "Tilt (front/back)", category: "Motion and display", min: -90, max: 90, step: 1 },
       { k: "tiltZ", label: "Tilt (side)", category: "Motion and display", min: -90, max: 90, step: 1 },
@@ -586,6 +611,11 @@
         if (!valid) return null;
         settings[u.k] = v;
       }
+      if (Object.prototype.hasOwnProperty.call(obj, "borderImage")) {
+        if (typeof obj.borderImage !== "string"
+          || (obj.borderImage && !/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.borderImage))) return null;
+        settings.borderImage = obj.borderImage;
+      }
       return Object.keys(settings).length ? settings : null;
     }
 
@@ -600,6 +630,7 @@
           const value = settings[u.k];
           CFG[u.k] = typeof value === "number" ? Math.min(u.max, Math.max(u.min, value)) : value;
         }
+        if (typeof settings.borderImage === "string") CFG.borderImage = settings.borderImage;
       } else if (saved) lastSettingsLoadFailed = true;
     } catch (e) {
       lastSettingsLoadFailed = true;
@@ -615,13 +646,14 @@
       "Settings": "設定", "Privacy Policy": "プライバシーポリシー",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
-      "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各段の上下に枠", "Border color": "枠の色",
-      "Border style": "枠のスタイル", "Solid": "実線", "Dashed": "破線", "Dotted": "点線", "Double": "二重線",
+      "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各行の上下に枠", "Border color": "枠の色",
+      "Border style": "枠のスタイル", "Solid": "実線", "Dashed": "破線", "Dotted": "点線", "Double": "二重線", "Image file": "画像ファイル",
+      "Upload image": "画像をアップロード", "Change image": "画像を変更",
       "Border width": "枠の太さ", "Top spacing": "上の余白", "Bottom spacing": "下の余白", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
       "Text appearance": "文字と見た目", "Colors": "色", "Cylinder layout": "円柱の配置", "Motion and display": "動きと表示",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
-      "Row gap": "段の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "段ごとに逆回転",
+      "Row gap": "行の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "行ごとに逆回転",
       "Show back side": "裏側を表示", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
       "Load installed fonts": "インストール済みフォントを読込", "Loaded": "読み込み済み",
       "Couldn't access installed fonts": "フォント一覧を取得できませんでした",
@@ -632,6 +664,9 @@
       "This browser cannot save presets": "このブラウザには保存できません",
       "Could not save current settings": "現在の設定を保存できませんでした",
       "Could not load previous settings": "前回の設定を読み込めませんでした",
+      "Unsupported image file": "対応していない画像形式です（PNG、JPEG、WebP、GIF）",
+      "Image upload failed": "画像を読み込めませんでした",
+      "Image uploaded": "画像を読み込みました",
       "Download JSON": "JSONを書き出す", "Import JSON": "JSONを読み込む",
       "Settings exported": "設定をJSONに書き出しました", "Settings imported": "設定を読み込みました",
       "Invalid settings JSON": "設定JSONの形式が正しくありません", "Could not read settings file": "設定ファイルを読み込めませんでした",
@@ -647,6 +682,47 @@
     document.documentElement.lang = JA ? "ja" : "en";
     document.title = tr("Cylinder Text Animation");
     const $ = id => document.getElementById(id);
+    let decodedImageSource = "", decodedImagePromise = null;
+    function decodeImageSource(src) {
+      if (decodedImageSource === src && decodedImagePromise) return decodedImagePromise;
+      decodedImageSource = src;
+      decodedImagePromise = new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => {
+          if (decodedImageSource === src) {
+            decodedImageSource = "";
+            decodedImagePromise = null;
+          }
+          reject(new Error("Could not decode image"));
+        };
+        image.src = src;
+      });
+      return decodedImagePromise;
+    }
+
+    function readImageFile(file) {
+      const supportedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+      if (!supportedTypes.includes(file.type)) return Promise.reject(new Error("Unsupported image file"));
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            if (typeof reader.result !== "string"
+              || !/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(reader.result)) {
+              throw new Error("Unsupported image file");
+            }
+            await decodeImageSource(reader.result);
+            resolve(reader.result);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(reader.error || new Error("Could not read image"));
+        reader.readAsDataURL(file);
+      });
+    }
+
     $("panel").firstElementChild.textContent = tr("Settings");
     $("policy-link").textContent = tr("Privacy Policy");
     const ring = $("ring"), stage = $("stage");
@@ -663,6 +739,12 @@
       ctx.font = `${fw} ${fs}px ${family}`;
 
       const lines = CFG.text.split("\n");   // One line becomes one row.
+      const lineLayouts = lines.map(line => {
+        const unit = line === "" ? [] : Array.from(line + (CFG.repeat ? CFG.separator : ""));
+        const widths = unit.map(c => ctx.measureText(c).width + ls * fs);
+        return { unit, widths, unitW: widths.reduce((a, b) => a + b, 0) || 1 };
+      });
+      const start = CFG.repeat ? 0 : -lineLayouts.reduce((max, layout) => Math.max(max, layout.unitW), 0) / 2;
       const C = 2 * Math.PI * R;
       const ys = lines.map((_, r) => (r - (lines.length - 1) / 2) * fs * CFG.rowGap);
       if (CFG.borderMode !== "none") {
@@ -673,6 +755,25 @@
           : ys.map((y, row) => ({ top: y - topOffset, bottom: y + bottomOffset, topRow: row, bottomRow: row }));
         for (const bound of bounds) {
           for (const [y, row] of [[bound.top, bound.topRow], [bound.bottom, bound.bottomRow]]) {
+            if (CFG.borderStyle === "image" && CFG.borderImage) {
+              const segmentCount = 180;
+              const circumference = 2 * Math.PI * R;
+              for (let i = 0; i < segmentCount; i++) {
+                const border = document.createElement("div");
+                border.className = "border-image-segment";
+                border.setAttribute("aria-hidden", "true");
+                const segmentWidth = circumference / segmentCount;
+                border.style.left = -segmentWidth / 2 + "px";
+                border.style.top = -CFG.borderWidth / 2 + "px";
+                border.style.width = segmentWidth + "px";
+                border.style.backgroundImage = `url("${CFG.borderImage}")`;
+                border.style.backgroundSize = `${circumference}px ${CFG.borderWidth}px`;
+                border.style.backgroundPosition = `${-i * circumference / segmentCount}px 0`;
+                ring.appendChild(border);
+                borderData.push({ el: border, y, row, angle: (i + 0.5) * Math.PI * 2 / segmentCount });
+              }
+              continue;
+            }
             const border = document.createElement("div");
             border.classList.add("border");
             border.setAttribute("aria-hidden", "true");
@@ -689,9 +790,7 @@
 
       for (let r = 0; r < lines.length; r++) {
         // Calculate character widths and repetitions for each line; empty lines remain empty rows.
-        const unit = lines[r] === "" ? [] : Array.from(lines[r] + (CFG.repeat ? CFG.separator : ""));
-        const widths = unit.map(c => ctx.measureText(c).width + ls * fs);
-        const unitW = widths.reduce((a, b) => a + b, 0) || 1;
+        const { unit, widths, unitW } = lineLayouts[r];
         const n = CFG.repeat ? Math.max(1, Math.round(C / unitW)) : 1;
         const k = CFG.repeat ? C / (n * unitW) : 1;   // Adjust spacing to fit the circumference exactly.
         const row = document.createElement("div");
@@ -699,7 +798,7 @@
         const y = (r - (lines.length - 1) / 2) * fs * CFG.rowGap;
         row.style.transform = `translateY(${y}px)`;
         const chars = [];
-        let cum = CFG.repeat ? 0 : -unitW / 2;      // Center the text at the front when repetition is off.
+        let cum = start;
         for (let i = 0; i < n; i++) {
           unit.forEach((ch, j) => {
             const el = document.createElement("span");
@@ -713,7 +812,8 @@
           });
         }
         ring.appendChild(row);
-        rowsData.push({ y, chars, phase: r * 0.35 });
+        const direction = CFG.alternate && r % 2 ? -1 : 1;
+        rowsData.push({ y, chars, phase: (1 - direction) * spin });
       }
       updateSceneSettings();
     }
@@ -765,10 +865,19 @@
       ring.style.setProperty("--bs", CFG.borderStyle);
       ring.style.setProperty("--bw", CFG.borderWidth + "px");
       if (CFG.borderRotation === "fixed") {
-        borderData.forEach(({ el, y }) => {
-          el.style.transform = `translateY(${y}px) rotateX(90deg)`;
+        borderData.forEach(({ el, y, angle }) => {
+          el.style.transform = angle === undefined
+            ? `translateY(${y}px) rotateX(90deg)`
+            : `translateY(${y}px) rotateY(${angle}rad) translateZ(${CFG.radius}px)`;
         });
       }
+      const circumference = 2 * Math.PI * CFG.radius;
+      borderData.forEach(({ el, angle }) => {
+        if (angle !== undefined) {
+          el.style.top = -CFG.borderWidth / 2 + "px";
+          el.style.backgroundSize = `${circumference}px ${CFG.borderWidth}px`;
+        }
+      });
       fit();
     }
 
@@ -782,9 +891,11 @@
       const R = CFG.radius, rad = Math.PI / 180;
       const tx = -CFG.tiltX * rad, cosT = Math.cos(tx), sinT = Math.sin(tx);
       if (CFG.borderRotation === "withText") {
-        borderData.forEach(({ el, y, row }) => {
+        borderData.forEach(({ el, y, row, angle }) => {
           const direction = CFG.alternate && row % 2 ? -1 : 1;
-          el.style.transform = `translateY(${y}px) rotateY(${direction * spin}rad) rotateX(90deg)`;
+          el.style.transform = angle === undefined
+            ? `translateY(${y}px) rotateY(${direction * spin}rad) rotateX(90deg)`
+            : `translateY(${y}px) rotateY(${angle + direction * spin}rad) translateZ(${R}px)`;
         });
       }
 
@@ -818,6 +929,7 @@
     /* ---- Build the control panel ---- */
     const fields = $("fields");
     const inputs = {};
+    let borderImageButton = null, borderImageFile = null;
     let loadedPresetName = "";
     let loadedPresetSettings = null;
     let currentCategory = "";
@@ -831,6 +943,7 @@
       }
       const wrap = document.createElement("div");
       wrap.className = "f" + (u.type ? " wide" : "") + (u.k === "fontFamily" ? " font-field" : "");
+      if (u.k === "borderStyle") wrap.classList.add("border-style-field");
       const name = document.createElement(u.type === "color" ? "span" : "label");
       name.textContent = tr(u.label);
       if (u.type !== "color") name.htmlFor = "f-" + u.k;   // Do not associate color pickers with labels to avoid opening them across the whole row.
@@ -840,7 +953,7 @@
       if (u.type === "select") { u.options.forEach(o => inp.add(new Option(tr(o.label), o.value))); inp.value = CFG[u.k]; }
       else if (u.type === "color") { inp.type = "color"; inp.value = CFG[u.k]; }
       else if (u.type === "text") {
-        if (u.multiline) { inp.rows = 3; inp.placeholder = tr("Each line becomes one row"); } else inp.type = "text";
+        if (u.multiline) { inp.rows = 3; } else inp.type = "text";
         inp.value = CFG[u.k];
         if (u.k === "fontFamily") inp.placeholder = tr("Any installed font name (e.g. Arial)");
         if (u.list) {
@@ -877,13 +990,42 @@
           }
         });
       }
+      if (u.k === "borderStyle") {
+        borderImageButton = document.createElement("button");
+        borderImageButton.type = "button";
+        borderImageButton.className = "border-image-upload";
+        borderImageButton.textContent = tr("Upload image");
+        borderImageFile = document.createElement("input");
+        borderImageFile.type = "file";
+        borderImageFile.accept = "image/png,image/jpeg,image/webp,image/gif";
+        borderImageFile.hidden = true;
+        borderImageButton.addEventListener("click", () => borderImageFile.click());
+        borderImageFile.addEventListener("change", async () => {
+          const file = borderImageFile.files?.[0];
+          if (!file) return;
+          try {
+            CFG.borderImage = await readImageFile(file);
+            borderImageButton.textContent = tr("Change image");
+            recordSettingsHistory(true);
+            scheduleSettingsPersistence();
+            updatePresetState();
+            updateSceneSettings();
+            rebuild();
+            say("Image uploaded");
+          } catch (error) {
+            say(error.message === "Unsupported image file" ? error.message : "Image upload failed");
+          } finally {
+            borderImageFile.value = "";
+          }
+        });
+      }
       inp.addEventListener("input", () => {
         CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
         if (out && document.activeElement !== out) out.value = CFG[u.k];   // Do not overwrite the value while it is being edited.
         recordSettingsHistory();
         scheduleSettingsPersistence();
         updatePresetState();
-        if (u.k === "borderMode") syncBorderControls();
+        if (u.k === "borderMode" || u.k === "borderStyle") syncBorderControls();
         updateSceneSettings();
         scheduleFrame();
         if (u.rebuild) (u.k === "fontFamily" || u.type === "text" ? rebuild() : build());
@@ -900,6 +1042,7 @@
       }
       inputs[u.k] = { inp, out, u, wrap };
       wrap.append(name, inp);
+      if (u.k === "borderStyle") wrap.append(borderImageButton, borderImageFile);
       if (fontLoadButton) wrap.append(fontLoadButton);
       if (fontLoadStatus) wrap.append(fontLoadStatus);
       if (out) wrap.append(out);
@@ -912,6 +1055,10 @@
         inp.disabled = disabled;
         if (out) out.disabled = disabled;
         wrap.classList.toggle("disabled", disabled);
+      }
+      if (borderImageButton) {
+        borderImageButton.hidden = disabled || CFG.borderStyle !== "image";
+        borderImageButton.textContent = tr(CFG.borderImage ? "Change image" : "Upload image");
       }
     }
     syncBorderControls();
@@ -928,6 +1075,7 @@
         if (out) out.value = CFG[k];
       }
       clearPresetState();
+      if (borderImageButton) borderImageButton.textContent = tr("Upload image");
       recordSettingsHistory(true);
       persistCurrentSettings();
       syncBorderControls();
@@ -1001,7 +1149,7 @@
     try { presets = JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {}; } catch (e) { persisted = false; }
     const has = n => Object.prototype.hasOwnProperty.call(presets, n);
     const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(presets)); persisted = true; } catch (e) { persisted = false; } };
-    const snapshot = () => Object.fromEntries(UI.map(u => [u.k, CFG[u.k]]));
+    const snapshot = () => ({ ...Object.fromEntries(UI.map(u => [u.k, CFG[u.k]])), borderImage: CFG.borderImage });
     const settingsHistory = [snapshot()];
     const maxHistoryEntries = 100;
     let historyIndex = 0;
@@ -1067,6 +1215,10 @@
         const { inp, out } = inputs[u.k];
         if (u.type === "bool") inp.checked = v; else inp.value = v;
         if (out) out.value = v;
+      }
+      if (typeof obj.borderImage === "string"
+        && (!obj.borderImage || /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.borderImage))) {
+        CFG.borderImage = obj.borderImage;
       }
       syncBorderControls();
       updateSceneSettings();
@@ -1251,6 +1403,33 @@
 
     const yieldToBrowser = () => new Promise(resolve => setTimeout(resolve, 0));
 
+    function drawImageTriangle(context, image, source, destination) {
+      const [s1, s2, s3] = source, [d1, d2, d3] = destination;
+      const denominator = s1.x * (s2.y - s3.y) + s2.x * (s3.y - s1.y) + s3.x * (s1.y - s2.y);
+      if (!denominator) return;
+      const a = (d1.x * (s2.y - s3.y) + d2.x * (s3.y - s1.y) + d3.x * (s1.y - s2.y)) / denominator;
+      const c = (d1.x * (s3.x - s2.x) + d2.x * (s1.x - s3.x) + d3.x * (s2.x - s1.x)) / denominator;
+      const e = (d1.x * (s2.x * s3.y - s3.x * s2.y)
+        + d2.x * (s3.x * s1.y - s1.x * s3.y) + d3.x * (s1.x * s2.y - s2.x * s1.y)) / denominator;
+      const b = (d1.y * (s2.y - s3.y) + d2.y * (s3.y - s1.y) + d3.y * (s1.y - s2.y)) / denominator;
+      const d = (d1.y * (s3.x - s2.x) + d2.y * (s1.x - s3.x) + d3.y * (s2.x - s1.x)) / denominator;
+      const f = (d1.y * (s2.x * s3.y - s3.x * s2.y)
+        + d2.y * (s3.x * s1.y - s1.x * s3.y) + d3.y * (s1.x * s2.y - s2.x * s1.y)) / denominator;
+      context.save();
+      context.beginPath();
+      context.moveTo(d1.x, d1.y);
+      context.lineTo(d2.x, d2.y);
+      context.lineTo(d3.x, d3.y);
+      context.closePath();
+      context.clip();
+      context.setTransform(a, b, c, d, e, f);
+      const sourceLeft = Math.min(s1.x, s2.x, s3.x), sourceTop = Math.min(s1.y, s2.y, s3.y);
+      const sourceRight = Math.max(s1.x, s2.x, s3.x), sourceBottom = Math.max(s1.y, s2.y, s3.y);
+      context.drawImage(image, sourceLeft, sourceTop, sourceRight - sourceLeft, sourceBottom - sourceTop,
+        sourceLeft, sourceTop, sourceRight - sourceLeft, sourceBottom - sourceTop);
+      context.restore();
+    }
+
     async function drawExportFrame(context, width, height, pixelScale, sceneScale, frameSpin, settings, rows, borders) {
       const R = settings.radius, P = Math.max(settings.perspective, R * 1.3 + settings.fontSize);
       const tx = settings.tiltX * Math.PI / 180, tz = settings.tiltZ * Math.PI / 180;
@@ -1293,36 +1472,61 @@
       context.lineJoin = "round";
 
       if (settings.borderMode !== "none" && settings.borderWidth > 0) {
-        context.strokeStyle = settings.borderColor;
-        context.lineWidth = settings.borderWidth * pixelScale * sceneScale;
-        context.setLineDash(settings.borderStyle === "dashed" ? [8, 5].map(v => v * pixelScale * sceneScale)
-          : settings.borderStyle === "dotted" ? [context.lineWidth, context.lineWidth * 1.5] : []);
-        const drawBorder = (border, radiusOffset = 0) => {
-          const direction = settings.alternate && border.row % 2 ? -1 : 1;
-          const rotation = settings.borderRotation === "fixed" ? 0 : direction * frameSpin;
-          const radius = R - radiusOffset;
-          context.beginPath();
-          for (let i = 0; i <= 96; i++) {
-            const angle = i * Math.PI * 2 / 96;
-            const x0 = radius * Math.cos(angle), z0 = radius * Math.sin(angle);
-            const x = x0 * Math.cos(rotation) + z0 * Math.sin(rotation);
-            const z = -x0 * Math.sin(rotation) + z0 * Math.cos(rotation);
-            const point = project(x, border.y, z);
-            if (i === 0) context.moveTo(point.x, point.y);
-            else context.lineTo(point.x, point.y);
+        const borderImage = settings.borderStyle === "image" && settings.borderImage
+          ? await decodeImageSource(settings.borderImage) : null;
+        if (borderImage) {
+          const segmentCount = 96, imageWidth = borderImage.naturalWidth, imageHeight = borderImage.naturalHeight;
+          for (const border of borders) {
+            const direction = settings.alternate && border.row % 2 ? -1 : 1;
+            const rotation = settings.borderRotation === "fixed" ? 0 : direction * frameSpin;
+            const halfWidth = settings.borderWidth / 2;
+            for (let i = 0; i < segmentCount; i++) {
+              const a0 = rotation + i * Math.PI * 2 / segmentCount;
+              const a1 = rotation + (i + 1) * Math.PI * 2 / segmentCount;
+              const p00 = project(R * Math.sin(a0), border.y - halfWidth, R * Math.cos(a0));
+              const p10 = project(R * Math.sin(a1), border.y - halfWidth, R * Math.cos(a1));
+              const p01 = project(R * Math.sin(a0), border.y + halfWidth, R * Math.cos(a0));
+              const p11 = project(R * Math.sin(a1), border.y + halfWidth, R * Math.cos(a1));
+              const sx0 = i * imageWidth / segmentCount, sx1 = (i + 1) * imageWidth / segmentCount;
+              const s00 = { x: sx0, y: 0 }, s10 = { x: sx1, y: 0 };
+              const s01 = { x: sx0, y: imageHeight }, s11 = { x: sx1, y: imageHeight };
+              drawImageTriangle(context, borderImage, [s00, s10, s01], [p00, p10, p01]);
+              drawImageTriangle(context, borderImage, [s10, s11, s01], [p10, p11, p01]);
+            }
+            await yieldToBrowser();
           }
-          context.closePath();
-          context.stroke();
-        };
-        let renderedBorders = 0;
-        for (const border of borders) {
-          if (settings.borderStyle === "double") {
-            drawBorder(border, settings.borderWidth * 0.75);
-            drawBorder(border, -settings.borderWidth * 0.75);
-          } else drawBorder(border);
-          if (++renderedBorders % 4 === 0) await yieldToBrowser();
+        } else {
+          context.strokeStyle = settings.borderColor;
+          context.lineWidth = settings.borderWidth * pixelScale * sceneScale;
+          context.setLineDash(settings.borderStyle === "dashed" ? [8, 5].map(v => v * pixelScale * sceneScale)
+            : settings.borderStyle === "dotted" ? [context.lineWidth, context.lineWidth * 1.5] : []);
+          const drawBorder = (border, radiusOffset = 0) => {
+            const direction = settings.alternate && border.row % 2 ? -1 : 1;
+            const rotation = settings.borderRotation === "fixed" ? 0 : direction * frameSpin;
+            const radius = R - radiusOffset;
+            context.beginPath();
+            for (let i = 0; i <= 96; i++) {
+              const angle = i * Math.PI * 2 / 96;
+              const x0 = radius * Math.cos(angle), z0 = radius * Math.sin(angle);
+              const x = x0 * Math.cos(rotation) + z0 * Math.sin(rotation);
+              const z = -x0 * Math.sin(rotation) + z0 * Math.cos(rotation);
+              const point = project(x, border.y, z);
+              if (i === 0) context.moveTo(point.x, point.y);
+              else context.lineTo(point.x, point.y);
+            }
+            context.closePath();
+            context.stroke();
+          };
+          let renderedBorders = 0;
+          for (const border of borders) {
+            if (settings.borderStyle === "double") {
+              drawBorder(border, settings.borderWidth * 0.75);
+              drawBorder(border, -settings.borderWidth * 0.75);
+            } else drawBorder(border);
+            if (++renderedBorders % 4 === 0) await yieldToBrowser();
+          }
+          context.setLineDash([]);
         }
-        context.setLineDash([]);
       }
 
       let renderedCharacters = 0;
@@ -1380,7 +1584,7 @@
         phase: row.phase,
         chars: row.chars.map(({ text, a }) => ({ text, a }))
       }));
-      const exportBorders = borderData.map(({ y, row }) => ({ y, row }));
+      const exportBorders = [...new Map(borderData.map(({ y, row }) => [`${y}:${row}`, { y, row }])).values()];
       const exportAvailable = { ...avail };
       if (!HTMLCanvasElement.prototype.toBlob) {
         say("Animated WebP export is not supported by this browser");
