@@ -673,6 +673,8 @@
       "Download animated WebP": "アニメーションWebPを書き出す",
       "Exporting animated WebP": "アニメーションWebPを書き出しています",
       "Animated WebP exported": "アニメーションWebPを書き出しました",
+      "Cancel export": "書き出しをキャンセル",
+      "Animated WebP export canceled": "アニメーションWebPの書き出しをキャンセルしました",
       "Set a non-zero rotation speed to export": "書き出すには回転速度を0以外にしてください",
       "The animation is too long to export at this speed": "この回転速度ではアニメーションが長すぎて書き出せません",
       "Animated WebP export is not supported by this browser": "このブラウザーはアニメーションWebPの書き出しに対応していません",
@@ -1430,7 +1432,15 @@
       context.restore();
     }
 
-    async function drawExportFrame(context, width, height, pixelScale, sceneScale, frameSpin, settings, rows, borders) {
+    async function drawExportFrame(context, width, height, pixelScale, sceneScale, frameSpin, settings, rows, borders, signal) {
+      const checkCanceled = () => {
+        if (signal.aborted) {
+          const error = new Error("Animated WebP export canceled");
+          error.name = "AbortError";
+          throw error;
+        }
+      };
+      checkCanceled();
       const R = settings.radius, P = Math.max(settings.perspective, R * 1.3 + settings.fontSize);
       const tx = settings.tiltX * Math.PI / 180, tz = settings.tiltZ * Math.PI / 180;
       const cosX = Math.cos(tx), sinX = Math.sin(tx), cosZ = Math.cos(tz), sinZ = Math.sin(tz);
@@ -1494,6 +1504,7 @@
               drawImageTriangle(context, borderImage, [s10, s11, s01], [p10, p11, p01]);
             }
             await yieldToBrowser();
+            checkCanceled();
           }
         } else {
           context.strokeStyle = settings.borderColor;
@@ -1523,7 +1534,10 @@
               drawBorder(border, settings.borderWidth * 0.75);
               drawBorder(border, -settings.borderWidth * 0.75);
             } else drawBorder(border);
-            if (++renderedBorders % 4 === 0) await yieldToBrowser();
+            if (++renderedBorders % 4 === 0) {
+              await yieldToBrowser();
+              checkCanceled();
+            }
           }
           context.setLineDash([]);
         }
@@ -1557,12 +1571,21 @@
           context.fillStyle = settings.textColor;
           context.fillText(character.text === " " ? "\u00a0" : character.text, 0, 0);
           context.restore();
-          if (++renderedCharacters % 8 === 0) await yieldToBrowser();
+          if (++renderedCharacters % 8 === 0) {
+            await yieldToBrowser();
+            checkCanceled();
+          }
         }
       }
     }
 
+    let exportController = null;
     const exportWebp = mk("Download animated WebP", async () => {
+      if (exportController) {
+        exportController.abort();
+        say("Animated WebP export canceled");
+        return;
+      }
       const frameDuration = 17;
       const maxDuration = 25;
       const maxDimension = 1920;
@@ -1591,13 +1614,25 @@
         return;
       }
 
-      exportWebp.disabled = true;
+      const controller = new AbortController();
+      exportController = controller;
+      exportWebp.textContent = tr("Cancel export");
       exportWebp.style.setProperty("--export-progress", 0);
+      status.textContent = `${tr("Exporting animated WebP")} (0/${frameCount})`;
+      const checkCanceled = () => {
+        if (controller.signal.aborted) {
+          const error = new Error("Animated WebP export canceled");
+          error.name = "AbortError";
+          throw error;
+        }
+      };
       try {
         if (document.fonts) await document.fonts.ready;
+        checkCanceled();
         if (document.fonts) {
           const spec = `${exportSettings.fontWeight} ${exportSettings.fontSize}px ${familyCss(exportSettings.fontFamily)}`;
           await document.fonts.load(spec, exportSettings.text + exportSettings.separator);
+          checkCanceled();
         }
         const pixelScale = Math.min(2, maxDimension / Math.max(exportAvailable.w, exportAvailable.h));
         const R = exportSettings.radius, fs = exportSettings.fontSize;
@@ -1623,19 +1658,22 @@
         for (let i = 0; i < frameCount; i++) {
           await drawExportFrame(context, width, height, pixelScale, sceneScale,
             startSpin + Math.sign(exportSettings.speed) * Math.PI * 2 * i / frameCount,
-            exportSettings, exportRows, exportBorders);
+            exportSettings, exportRows, exportBorders, controller.signal);
           const blob = await new Promise((resolve, reject) => {
             canvas.toBlob(image => image ? resolve(image) : reject(new Error("WebP frame encoding failed")), "image/webp", 0.95);
           });
+          checkCanceled();
           if (blob.type !== "image/webp") {
             say("Animated WebP export is not supported by this browser");
             return;
           }
           frames.push(getWebpFrameChunks(await blob.arrayBuffer()));
+          checkCanceled();
           exportWebp.style.setProperty("--export-progress", (i + 1) / frameCount * 100);
           status.textContent = `${tr("Exporting animated WebP")} (${i + 1}/${frameCount})`;
           await new Promise(resolve => requestAnimationFrame(resolve));
         }
+        checkCanceled();
         const blob = makeAnimatedWebp(width, height, frames, frameDurations);
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -1645,10 +1683,15 @@
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         say("Animated WebP exported");
       } catch (error) {
-        console.error("Animated WebP export failed", error);
-        say("Could not export animated WebP");
+        if (controller.signal.aborted) {
+          say("Animated WebP export canceled");
+        } else {
+          console.error("Animated WebP export failed", error);
+          say("Could not export animated WebP");
+        }
       } finally {
-        exportWebp.disabled = false;
+        exportController = null;
+        exportWebp.textContent = tr("Download animated WebP");
         exportWebp.style.setProperty("--export-progress", 0);
       }
     });
