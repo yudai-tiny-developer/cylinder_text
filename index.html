@@ -561,7 +561,7 @@
           { label: "Image file", value: "image" }
         ]
       },
-      { k: "borderWidth", label: "Border width", category: "Border", min: 0, max: 48, step: 0.5 },
+      { k: "borderWidth", label: "Border width", category: "Border", min: 0, max: 96, step: 0.5 },
       { k: "borderTopSpacing", label: "Top spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
       { k: "borderBottomSpacing", label: "Bottom spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
       {
@@ -870,7 +870,7 @@
         borderData.forEach(({ el, y, angle }) => {
           el.style.transform = angle === undefined
             ? `translateY(${y}px) rotateX(90deg)`
-            : `translateY(${y}px) rotateY(${angle}rad) translateZ(${CFG.radius}px)`;
+            : `translateY(${y}px) rotateY(${angle + Math.PI}rad) translateZ(${CFG.radius}px)`;
         });
       }
       const circumference = 2 * Math.PI * CFG.radius;
@@ -1488,7 +1488,7 @@
           const segmentCount = 96, imageWidth = borderImage.naturalWidth, imageHeight = borderImage.naturalHeight;
           for (const border of borders) {
             const direction = settings.alternate && border.row % 2 ? -1 : 1;
-            const rotation = settings.borderRotation === "fixed" ? 0 : direction * frameSpin;
+            const rotation = settings.borderRotation === "fixed" ? Math.PI : direction * frameSpin;
             const halfWidth = settings.borderWidth / 2;
             for (let i = 0; i < segmentCount; i++) {
               const a0 = rotation + i * Math.PI * 2 / segmentCount;
