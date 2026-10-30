@@ -54,7 +54,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Background | Stage background color. |
 | Border | Adds no border, a top-only, bottom-only, or top-and-bottom border around all rows or each row. |
 | Border style | Sets the border to dotted, dashed, solid, double, or an uploaded image. Image borders support PNG, JPEG, WebP, and GIF. |
-| Border width | Sets the border thickness from 0 to 24 pixels. |
+| Border width | Sets the border thickness from 0.5 to 96 pixels. |
 | Top spacing | Sets the gap between the text and the top border from 0 to 48 pixels. |
 | Bottom spacing | Sets the gap between the text and the bottom border from 0 to 48 pixels. |
 | Border rotation | Chooses whether the border rotates with the text. |
@@ -103,13 +103,13 @@ After changing a setting, the selector returns to its placeholder. Returning all
 
 Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file. An uploaded border image is embedded as a Base64 data URL in JSON exports and presets, so it is restored without uploading the image again.
 
-Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps, adjusts frame delays to match the rotation period, and replaces each full-canvas frame without disposal to avoid frame compositing artifacts. The output is cropped to the animation bounds with a small safety margin, scaled to up to twice the available scene dimensions, and capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, and exports longer than 25 seconds are not supported. This feature requires browser support for WebP canvas encoding.
+Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps and adjusts frame delays to match the rotation period. The output uses the calculated scene dimensions, scales to up to twice the available scene dimensions, and is capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, and exports longer than 25 seconds are not supported. This feature requires browser support for WebP canvas encoding.
 
 ## Privacy
 
 The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. The last-used settings and saved presets, including uploaded border images, are stored only in local browser storage.
 
-A hosted copy may contact Google Fonts and the hosting provider to load application resources. Those network requests are subject to the privacy policies of those services and the host. For details about app data handling, see [Privacy Policy](./privacy-policy.html).
+When online, the app requests its suggested fonts from Google Fonts, including when opened as a local file. Google Fonts and, for hosted copies, the hosting provider may receive ordinary request information such as your IP address and browser details. These requests do not include your text, settings, presets, or uploaded border images. See the [Privacy Policy](./privacy-policy.html) for details.
 
 ## Browser support
 
