@@ -776,7 +776,7 @@
     const ring = $("ring"), stage = $("stage"), scene = document.querySelector(".scene"), panelEl = $("panel");
     const ctx = document.createElement("canvas").getContext("2d");
     let rowsData = [], borderData = [], spin = 0, last = performance.now();
-    let rebuildRequest = 0, frameRequest = 0, centerStagePending = false;
+    let rebuildRequest = 0, frameRequest = 0;
 
     function build() {
       rebuildRequest++;
@@ -889,11 +889,27 @@
       return /[,"']/.test(v) ? v : `"${v}",sans-serif`;
     }
 
-    // Keep the perspective distance above the radius so text does not pass behind the camera.
-    const persp = () => Math.max(CFG.perspective, CFG.radius * 1.3 + CFG.fontSize);
+    // Keep the camera in front of the cylinder and its text.
+    const persp = settings => Math.max(settings.perspective, settings.radius + settings.fontSize);
+
+    function getSceneLayout(settings, availableWidth, availableHeight) {
+      const R = settings.radius, fs = settings.fontSize;
+      const P = persp(settings);
+      const frontScale = P / (P - R);
+      const widthAtZeroTilt = (2 * R + fs * 2) * frontScale + 40;
+      const heightAtZeroTilt = (Math.max(0, settings.text.split("\n").length - 1) * fs * settings.rowGap
+        + 2 * R * Math.abs(Math.sin(settings.tiltX * Math.PI / 180)) + fs * 2) * frontScale + 40;
+      const tiltZ = settings.tiltZ * Math.PI / 180;
+      const width = widthAtZeroTilt * Math.abs(Math.cos(tiltZ)) + heightAtZeroTilt * Math.abs(Math.sin(tiltZ));
+      const height = widthAtZeroTilt * Math.abs(Math.sin(tiltZ)) + heightAtZeroTilt * Math.abs(Math.cos(tiltZ));
+      return { width, height, scale: Math.min(1, availableWidth / width, availableHeight / height) };
+    }
 
     function updateSceneSettings() {
-      stage.style.perspective = persp() + "px";
+      stage.style.perspective = persp(CFG) + "px";
+      const sceneBounds = scene.getBoundingClientRect();
+      const { scale } = getSceneLayout(CFG, sceneBounds.width, sceneBounds.height);
+      stage.style.transform = scale < 1 ? `scale(${scale})` : "";
       ring.style.transform = `rotateZ(${CFG.tiltZ}deg) rotateX(${-CFG.tiltX}deg)`;
       document.body.classList.toggle("hide-back", !CFG.backVisible);
       document.body.style.background = CFG.bgColor;
@@ -917,40 +933,7 @@
           el.style.backgroundSize = `${circumference}px ${CFG.borderWidth}px`;
         }
       });
-      centerStagePending = true;
       scheduleFrame();
-    }
-
-    function centerStage() {
-      // Perspective shifts the projected bounds as the cylinder radius changes.
-      const elements = ring.querySelectorAll(".ch, .border, .border-image-segment");
-      if (!elements.length) {
-        stage.style.transform = "";
-        return;
-      }
-      stage.style.transform = "";
-      let top = Infinity, bottom = -Infinity;
-      let left = Infinity, right = -Infinity;
-      elements.forEach(el => {
-        const bounds = el.getBoundingClientRect();
-        top = Math.min(top, bounds.top);
-        bottom = Math.max(bottom, bounds.bottom);
-        left = Math.min(left, bounds.left);
-        right = Math.max(right, bounds.right);
-      });
-      const sceneBounds = scene.getBoundingClientRect();
-      const stageBounds = stage.getBoundingClientRect();
-      const centerX = (stageBounds.left + stageBounds.right) / 2;
-      const centerY = (stageBounds.top + stageBounds.bottom) / 2;
-      const width = 2 * Math.max(centerX - left, right - centerX);
-      const height = bottom - top;
-      const scale = panelEl.open
-        ? Math.min(1, sceneBounds.width / width, sceneBounds.height / height)
-        : 1;
-      const sceneCenterY = (sceneBounds.top + sceneBounds.bottom) / 2;
-      const offsetY = sceneCenterY - (centerY + ((top + bottom) / 2 - centerY) * scale);
-      // Keep the horizontal cylinder axis centered while balancing the projected vertical margins.
-      stage.style.transform = scale === 1 && offsetY === 0 ? "" : `translateY(${offsetY}px) scale(${scale})`;
     }
 
     function frame(now) {
@@ -984,10 +967,6 @@
           c.el.style.transform = `translate(-50%,-50%) rotateY(${th}rad) translateZ(${R}px) scale(${s})`;
         }
       });
-      if (centerStagePending) {
-        centerStage();
-        centerStagePending = false;
-      }
       if (animate) scheduleFrame(true);
     }
 
@@ -1515,7 +1494,7 @@
         }
       };
       checkCanceled();
-      const R = settings.radius, P = Math.max(settings.perspective, R * 1.3 + settings.fontSize);
+      const R = settings.radius, P = persp(settings);
       const tx = settings.tiltX * Math.PI / 180, tz = settings.tiltZ * Math.PI / 180;
       const cosX = Math.cos(tx), sinX = Math.sin(tx), cosZ = Math.cos(tz), sinZ = Math.sin(tz);
       const centerX = width / 2, centerY = height / 2;
@@ -1709,16 +1688,8 @@
           checkCanceled();
         }
         const pixelScale = Math.min(2, maxDimension / Math.max(availableWidth, availableHeight));
-        const R = exportSettings.radius, fs = exportSettings.fontSize;
-        const P = Math.max(exportSettings.perspective, R * 1.3 + fs);
-        const frontScale = P / (P - R);
-        const w0 = (2 * R + fs * 2) * frontScale + 40;
-        const h0 = (Math.max(0, exportSettings.text.split("\n").length - 1) * fs * exportSettings.rowGap
-          + 2 * R * Math.abs(Math.sin(exportSettings.tiltX * Math.PI / 180)) + fs * 2) * frontScale + 40;
-        const tz = exportSettings.tiltZ * Math.PI / 180;
-        const sceneWidth = w0 * Math.abs(Math.cos(tz)) + h0 * Math.abs(Math.sin(tz));
-        const sceneHeight = w0 * Math.abs(Math.sin(tz)) + h0 * Math.abs(Math.cos(tz));
-        const sceneScale = Math.min(1, availableWidth / sceneWidth, availableHeight / sceneHeight);
+        const { width: sceneWidth, height: sceneHeight, scale: sceneScale } =
+          getSceneLayout(exportSettings, availableWidth, availableHeight);
         const width = Math.max(1, Math.round(sceneWidth * sceneScale * pixelScale));
         const height = Math.max(1, Math.round(sceneHeight * sceneScale * pixelScale));
         const canvas = document.createElement("canvas");
