@@ -498,11 +498,16 @@
       cursor: pointer;
     }
 
-    .policy-link {
-      display: block;
-      justify-self: end;
+    .policy-links {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
       width: fit-content;
       margin-top: 8px;
+      margin-left: auto;
+    }
+
+    .policy-link {
       color: var(--accent);
       font-size: 12px;
     }
@@ -531,7 +536,10 @@
   <details class="panel" id="panel">
     <summary>Settings</summary>
     <div class="fields" id="fields">
-      <a class="policy-link" id="policy-link" href="privacy-policy.html">Privacy Policy</a>
+      <div class="policy-links" id="policy-links">
+        <a class="policy-link" id="policy-link" href="privacy-policy.html">Privacy Policy</a>
+        <a class="policy-link" id="terms-link" href="terms-of-use.html">Terms of Use</a>
+      </div>
     </div>
   </details>
   <script>
@@ -689,7 +697,7 @@
     /* Use Japanese when the browser's preferred language is Japanese; otherwise use English. */
     const JA = /^ja/i.test(navigator.languages?.[0] || navigator.language || "en");
     const JA_TRANSLATIONS = {
-      "Settings": "設定", "Privacy Policy": "プライバシーポリシー",
+      "Settings": "設定", "Privacy Policy": "プライバシーポリシー", "Terms of Use": "利用規約",
       "If the animation isn't smooth, check that hardware acceleration is enabled in your browser settings.": "アニメーションが滑らかでない場合は、ブラウザーのグラフィックアクセラレーションが有効かご確認ください。",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
@@ -774,6 +782,7 @@
 
     $("panel").firstElementChild.textContent = tr("Settings");
     $("policy-link").textContent = tr("Privacy Policy");
+    $("terms-link").textContent = tr("Terms of Use");
     $("graphics-hint").textContent = tr("If the animation isn't smooth, check that hardware acceleration is enabled in your browser settings.");
     const ring = $("ring"), stage = $("stage"), scene = document.querySelector(".scene"), panelEl = $("panel");
     const ctx = document.createElement("canvas").getContext("2d");
@@ -1818,7 +1827,7 @@
     fields.prepend(pr);
 
     btns.appendChild(reset); fields.appendChild(btns);
-    fields.appendChild($("policy-link"));
+    fields.appendChild($("policy-links"));
 
     if (innerWidth > 700) panelEl.open = true;
     const textDock = $("text-dock");
