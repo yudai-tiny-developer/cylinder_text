@@ -1818,9 +1818,11 @@
     const syncTextFieldLocation = () => {
       if (panelEl.open) {
         fields.querySelector(".settings-category").after(inputs.text.wrap);
+        inputs.text.inp.rows = 3;
         textDock.hidden = true;
       } else {
         textDock.appendChild(inputs.text.wrap);
+        inputs.text.inp.rows = 2;
         textDock.hidden = false;
       }
     };
