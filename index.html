@@ -940,14 +940,17 @@
       });
       const sceneBounds = scene.getBoundingClientRect();
       const stageBounds = stage.getBoundingClientRect();
+      const centerX = (stageBounds.left + stageBounds.right) / 2;
+      const centerY = (stageBounds.top + stageBounds.bottom) / 2;
+      const width = 2 * Math.max(centerX - left, right - centerX);
+      const height = bottom - top;
       const scale = panelEl.open
-        ? Math.min(1, sceneBounds.width / (right - left), sceneBounds.height / (bottom - top))
+        ? Math.min(1, sceneBounds.width / width, sceneBounds.height / height)
         : 1;
-      const offsetX = (sceneBounds.left + sceneBounds.right) / 2
-        - (stageBounds.left + ((left + right) / 2 - stageBounds.left) * scale);
-      const offsetY = (sceneBounds.top + sceneBounds.bottom) / 2
-        - (stageBounds.top + ((top + bottom) / 2 - stageBounds.top) * scale);
-      stage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+      const sceneCenterY = (sceneBounds.top + sceneBounds.bottom) / 2;
+      const offsetY = sceneCenterY - (centerY + ((top + bottom) / 2 - centerY) * scale);
+      // Keep the horizontal cylinder axis centered while balancing the projected vertical margins.
+      stage.style.transform = scale === 1 && offsetY === 0 ? "" : `translateY(${offsetY}px) scale(${scale})`;
     }
 
     function frame(now) {
