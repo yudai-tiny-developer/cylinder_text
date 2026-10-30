@@ -1549,7 +1549,7 @@
         const direction = settings.alternate && r % 2 ? -1 : 1;
         for (const character of row.chars) {
           const angle = character.a + direction * frameSpin + row.phase;
-          if (!settings.backVisible && Math.cos(angle + tx) <= 0) continue;
+          if (!settings.backVisible && Math.cos(angle) * cosX <= 0) continue;
           const x = R * Math.sin(angle), z = R * Math.cos(angle);
           const point3d = { x, y: row.y, z };
           const projected = project(x, row.y, z);
