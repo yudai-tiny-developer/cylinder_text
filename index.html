@@ -154,6 +154,27 @@
       overflow-y: auto;
     }
 
+    .text-dock {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+      box-sizing: border-box;
+      max-width: 562px;
+      margin: 0 auto;
+      padding: 12px 16px 14px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      font-size: 14px;
+      z-index: 5;
+    }
+
+    .text-dock[hidden] {
+      display: none;
+    }
+
     .settings-category {
       grid-column: 1 / -1;
       margin: 4px 0 -2px;
@@ -487,6 +508,7 @@
       <div class="ring" id="ring"></div>
     </div>
   </main>
+  <div class="text-dock" id="text-dock" hidden></div>
   <details class="panel" id="panel">
     <summary>Settings</summary>
     <div class="fields" id="fields">
@@ -1772,14 +1794,29 @@
     btns.appendChild(reset); fields.appendChild(btns);
     fields.appendChild($("policy-link"));
 
-    if (innerWidth > 700) $("panel").open = true;
+    if (innerWidth > 700) panelEl.open = true;
+    const textDock = $("text-dock");
+    const syncTextFieldLocation = () => {
+      if (panelEl.open) {
+        fields.querySelector(".settings-category").after(inputs.text.wrap);
+        textDock.hidden = true;
+      } else {
+        textDock.appendChild(inputs.text.wrap);
+        textDock.hidden = false;
+      }
+    };
+    syncTextFieldLocation();
     // Reduce the scene's available area by the panel height to keep the animation from overlapping it.
     const measure = () => {
-      const avoid = Math.max(0, Math.round(innerHeight - panelEl.getBoundingClientRect().top)) + 8;
+      const controlsTop = textDock.hidden ? panelEl.getBoundingClientRect().top : textDock.getBoundingClientRect().top;
+      const avoid = Math.max(0, Math.round(innerHeight - controlsTop)) + 8;
       document.documentElement.style.setProperty("--avoid", avoid + "px");
       updateSceneSettings();
     };
-    panelEl.addEventListener("toggle", measure);
+    panelEl.addEventListener("toggle", () => {
+      syncTextFieldLocation();
+      measure();
+    });
     const ro = new ResizeObserver(measure);
     ro.observe(panelEl); ro.observe(document.body);
 
