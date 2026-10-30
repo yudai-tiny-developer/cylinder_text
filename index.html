@@ -902,14 +902,39 @@
       const tiltZ = settings.tiltZ * Math.PI / 180;
       const width = widthAtZeroTilt * Math.abs(Math.cos(tiltZ)) + heightAtZeroTilt * Math.abs(Math.sin(tiltZ));
       const height = widthAtZeroTilt * Math.abs(Math.sin(tiltZ)) + heightAtZeroTilt * Math.abs(Math.cos(tiltZ));
-      return { width, height, scale: Math.min(1, availableWidth / width, availableHeight / height) };
+      const tiltX = settings.tiltX * Math.PI / 180;
+      const cosX = Math.cos(tiltX), sinX = Math.sin(tiltX);
+      const cosZ = Math.cos(tiltZ), sinZ = Math.sin(tiltZ);
+      const rowSpan = Math.max(0, settings.text.split("\n").length - 1) * fs * settings.rowGap;
+      const borderExtra = settings.borderMode === "none" ? 0
+        : Math.max(settings.borderTopSpacing, settings.borderBottomSpacing) + settings.borderWidth / 2;
+      const projectedRadius = R + fs / 2 + (settings.borderMode === "none" ? 0 : settings.borderWidth / 2);
+      const top = -rowSpan / 2 - fs / 2 - borderExtra;
+      const bottom = rowSpan / 2 + fs / 2 + borderExtra;
+      let minY = Infinity, maxY = -Infinity;
+      for (const y of [top, bottom]) {
+        for (let i = 0; i < 1440; i++) {
+          const angle = i * Math.PI / 720;
+          const x = projectedRadius * Math.sin(angle), z = projectedRadius * Math.cos(angle);
+          const rotatedY = y * cosX + z * sinX;
+          const rotatedZ = -y * sinX + z * cosX;
+          const projectedY = P * (x * sinZ + rotatedY * cosZ) / (P - rotatedZ);
+          minY = Math.min(minY, projectedY);
+          maxY = Math.max(maxY, projectedY);
+        }
+      }
+      return {
+        width, height, offsetY: (minY + maxY) / 2,
+        scale: Math.min(1, availableWidth / width, availableHeight / height)
+      };
     }
 
     function updateSceneSettings() {
       stage.style.perspective = persp(CFG) + "px";
       const sceneBounds = scene.getBoundingClientRect();
-      const { scale } = getSceneLayout(CFG, sceneBounds.width, sceneBounds.height);
-      stage.style.transform = scale < 1 ? `scale(${scale})` : "";
+      const layout = getSceneLayout(CFG, sceneBounds.width, sceneBounds.height);
+      const offsetY = -layout.offsetY;
+      stage.style.transform = offsetY ? `translateY(${offsetY}px)` : "";
       ring.style.transform = `rotateZ(${CFG.tiltZ}deg) rotateX(${-CFG.tiltX}deg)`;
       document.body.classList.toggle("hide-back", !CFG.backVisible);
       document.body.style.background = CFG.bgColor;
