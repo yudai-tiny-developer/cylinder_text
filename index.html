@@ -549,7 +549,11 @@
         k: "borderMode", label: "Border", category: "Border", type: "select", rebuild: true, options: [
           { label: "No border", value: "none" },
           { label: "Top and bottom (all rows)", value: "all" },
-          { label: "Top and bottom (each row)", value: "rows" }
+          { label: "Top only (all rows)", value: "allTop" },
+          { label: "Bottom only (all rows)", value: "allBottom" },
+          { label: "Top and bottom (each row)", value: "rows" },
+          { label: "Top only (each row)", value: "rowsTop" },
+          { label: "Bottom only (each row)", value: "rowsBottom" }
         ]
       },
       {
@@ -561,7 +565,7 @@
           { label: "Image file", value: "image" }
         ]
       },
-      { k: "borderWidth", label: "Border width", category: "Border", min: 0, max: 96, step: 0.5 },
+      { k: "borderWidth", label: "Border width", category: "Border", min: 0.5, max: 96, step: 0.5 },
       { k: "borderTopSpacing", label: "Top spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
       { k: "borderBottomSpacing", label: "Bottom spacing", category: "Border", min: 0, max: 48, step: 1, rebuild: true },
       {
@@ -646,7 +650,8 @@
       "Settings": "設定", "Privacy Policy": "プライバシーポリシー",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
-      "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top and bottom (each row)": "各行の上下に枠", "Border color": "枠の色",
+      "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top only (all rows)": "全体の上だけに枠", "Bottom only (all rows)": "全体の下だけに枠",
+      "Top and bottom (each row)": "各行の上下に枠", "Top only (each row)": "各行の上だけに枠", "Bottom only (each row)": "各行の下だけに枠", "Border color": "枠の色",
       "Border style": "枠のスタイル", "Solid": "実線", "Dashed": "破線", "Dotted": "点線", "Double": "二重線", "Image file": "画像ファイル",
       "Upload image": "画像をアップロード", "Change image": "画像を変更",
       "Border width": "枠の太さ", "Top spacing": "上の余白", "Bottom spacing": "下の余白", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
@@ -752,11 +757,17 @@
       if (CFG.borderMode !== "none") {
         const topOffset = fs / 2 + CFG.borderTopSpacing;
         const bottomOffset = fs / 2 + CFG.borderBottomSpacing;
-        const bounds = CFG.borderMode === "all"
+        const allRows = CFG.borderMode === "all" || CFG.borderMode === "allTop" || CFG.borderMode === "allBottom";
+        const drawTop = CFG.borderMode !== "allBottom" && CFG.borderMode !== "rowsBottom";
+        const drawBottom = CFG.borderMode !== "allTop" && CFG.borderMode !== "rowsTop";
+        const bounds = allRows
           ? [{ top: ys[0] - topOffset, bottom: ys[ys.length - 1] + bottomOffset, topRow: 0, bottomRow: ys.length - 1 }]
           : ys.map((y, row) => ({ top: y - topOffset, bottom: y + bottomOffset, topRow: row, bottomRow: row }));
         for (const bound of bounds) {
-          for (const [y, row] of [[bound.top, bound.topRow], [bound.bottom, bound.bottomRow]]) {
+          const positions = [];
+          if (drawTop) positions.push([bound.top, bound.topRow]);
+          if (drawBottom) positions.push([bound.bottom, bound.bottomRow]);
+          for (const [y, row] of positions) {
             if (CFG.borderStyle === "image" && CFG.borderImage) {
               const segmentCount = 180;
               const circumference = 2 * Math.PI * R;
