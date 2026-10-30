@@ -543,6 +543,8 @@
       { k: "fontFamily", label: "Font", category: "Text appearance", type: "text", list: FONT_PRESETS, rebuild: true },
       { k: "fontWeight", label: "Weight", category: "Text appearance", min: 100, max: 900, step: 100, rebuild: true },
       { k: "strokeWidth", label: "Outline width", category: "Text appearance", min: 0, max: 8, step: 0.5 },
+      { k: "backVisible", label: "Show back side", category: "Text appearance", type: "bool" },
+      { k: "repeat", label: "Repeat", category: "Text appearance", type: "bool", rebuild: true },
       {
         k: "borderMode", label: "Border", category: "Border", type: "select", rebuild: true, options: [
           { label: "No border", value: "none" },
@@ -576,14 +578,12 @@
       { k: "fontSize", label: "Font size", category: "Cylinder layout", min: 16, max: 96, step: 1, rebuild: true },
       { k: "letterSpacing", label: "Letter spacing", category: "Cylinder layout", min: 0, max: 1, step: 0.01, rebuild: true },
       { k: "rowGap", label: "Row gap", category: "Cylinder layout", min: 0.8, max: 3, step: 0.05, rebuild: true },
-      { k: "repeat", label: "Repeat", category: "Cylinder layout", type: "bool", rebuild: true },
       { k: "speed", label: "Rotation speed", category: "Motion and display", min: -180, max: 180, step: 1 },
       { k: "tiltX", label: "Tilt (front/back)", category: "Motion and display", min: -90, max: 90, step: 1 },
       { k: "tiltZ", label: "Tilt (side)", category: "Motion and display", min: -90, max: 90, step: 1 },
       { k: "perspective", label: "Perspective", category: "Motion and display", min: 300, max: 1000, step: 10 },
       { k: "depthScale", label: "Shrink distant text", category: "Motion and display", min: 0, max: 0.9, step: 0.01 },
       { k: "minOpacity", label: "Distant opacity", category: "Motion and display", min: 0, max: 1, step: 0.01 },
-      { k: "backVisible", label: "Show back side", category: "Motion and display", type: "bool" },
       { k: "paused", label: "Pause", category: "Motion and display", type: "bool" }
     ];
 
