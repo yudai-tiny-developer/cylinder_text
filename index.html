@@ -572,6 +572,7 @@
       minOpacity: 0.12,       // Opacity at the farthest point.
       fade: 1.5,              // Fade curve toward the back; larger values fade faster.
       backVisible: true,      // Show the back of the cylinder (mirrored text).
+      mirrorFront: false,     // Mirror text on the front side and un-mirror the back side.
       paused: false
     };
     const CFG = { ...DEFAULTS };
@@ -585,6 +586,7 @@
       { k: "fontWeight", label: "Weight", category: "Text appearance", min: 100, max: 900, step: 100, rebuild: true },
       { k: "strokeWidth", label: "Outline width", category: "Text appearance", min: 0, max: 8, step: 0.5 },
       { k: "backVisible", label: "Show back side", category: "Text appearance", type: "bool" },
+      { k: "mirrorFront", label: "Mirror front side", category: "Text appearance", type: "bool", rebuild: true },
       { k: "repeat", label: "Repeat", category: "Text appearance", type: "bool", rebuild: true },
       {
         k: "borderMode", label: "Border", category: "Border", type: "select", rebuild: true, options: [
@@ -700,7 +702,7 @@
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
       "Row gap": "行の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "行ごとに逆回転",
-      "Show back side": "裏側を表示", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
+      "Show back side": "裏側を表示", "Mirror front side": "鏡文字にする", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
       "Load installed fonts": "インストール済みフォントを読込", "Loaded": "読み込み済み",
       "Couldn't access installed fonts": "フォント一覧を取得できませんでした",
       "Hold for 1 second to reset": "1秒間押し続けて離すと初期値に戻します",
@@ -790,6 +792,10 @@
       const lineLayouts = lines.map(line => {
         const unit = line === "" ? [] : Array.from(line + (CFG.repeat ? CFG.separator : ""));
         const widths = unit.map(c => ctx.measureText(c).width + ls * fs);
+        if (CFG.mirrorFront) {
+          unit.reverse();
+          widths.reverse();
+        }
         return { unit, widths, unitW: widths.reduce((a, b) => a + b, 0) || 1 };
       });
       const start = CFG.repeat ? 0 : -lineLayouts.reduce((max, layout) => Math.max(max, layout.unitW), 0) / 2;
@@ -989,7 +995,8 @@
           const d = Math.max(0, Math.min(1, (z / R + 1) / 2));
           const s = 1 - CFG.depthScale * (1 - d);
           c.el.style.opacity = CFG.minOpacity + (1 - CFG.minOpacity) * Math.pow(d, CFG.fade);
-          c.el.style.transform = `translate(-50%,-50%) rotateY(${th}rad) translateZ(${R}px) scale(${s})`;
+          const horizontalScale = CFG.mirrorFront ? -s : s;
+          c.el.style.transform = `translate(-50%,-50%) rotateY(${th}rad) translateZ(${R}px) scale(${horizontalScale},${s})`;
         }
       });
       if (animate) scheduleFrame(true);
@@ -1635,7 +1642,8 @@
           const depthScale = 1 - settings.depthScale * (1 - depth);
           const opacity = settings.minOpacity + (1 - settings.minOpacity) * Math.pow(depth, settings.fade);
           const cos = Math.cos(angle), sin = Math.sin(angle);
-          const horizontal = projectAxis(point3d, { x: cos, y: 0, z: -sin });
+          const horizontalDirection = settings.mirrorFront ? -1 : 1;
+          const horizontal = projectAxis(point3d, { x: horizontalDirection * cos, y: 0, z: -horizontalDirection * sin });
           const vertical = projectAxis(point3d, { x: 0, y: 1, z: 0 });
           context.save();
           context.globalAlpha = opacity;

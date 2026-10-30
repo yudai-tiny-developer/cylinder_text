@@ -13,6 +13,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
 - Optional mirrored/back-side text
+- Optional front-side mirroring with right-to-left text order and normally oriented back-side text
 - Pause/resume and reset-to-default controls
 - Automatically restores the last-used settings on the next visit
 - Undo and redo setting changes with Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z)
@@ -70,6 +71,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Repeat | Repeats text and its separator until each row fills the circumference. |
 | Alternate direction per row | Reverses rotation direction on alternating rows, including borders set to rotate with the text. |
 | Show back side | Controls whether text remains visible on the back of the cylinder. |
+| Mirror front side | Mirrors the front-side text, arranges the string right-to-left, and displays normally oriented text on the back side. |
 | Pause | Stops and resumes animation. |
 
 Hold **Reset to defaults** for one second, then release while the pointer is still over the button to restore the original configuration. You can also hold Space or Enter while the button is focused. The button's progress indicator turns green when the reset is ready; releasing sooner or releasing the pointer outside the button cancels it.
