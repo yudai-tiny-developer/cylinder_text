@@ -669,7 +669,6 @@
     /* Use Japanese when the browser's preferred language is Japanese; otherwise use English. */
     const JA = /^ja/i.test(navigator.languages?.[0] || navigator.language || "en");
     const JA_TRANSLATIONS = {
-      "Cylinder Text Animation": "円柱テキスト アニメーション",
       "Settings": "設定", "Privacy Policy": "プライバシーポリシー",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
@@ -710,7 +709,6 @@
     };
     const tr = s => JA ? (JA_TRANSLATIONS[s] ?? s) : s;
     document.documentElement.lang = JA ? "ja" : "en";
-    document.title = tr("Cylinder Text Animation");
     const $ = id => document.getElementById(id);
     let decodedImageSource = "", decodedImagePromise = null;
     function decodeImageSource(src) {
