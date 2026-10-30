@@ -732,10 +732,10 @@
 
     $("panel").firstElementChild.textContent = tr("Settings");
     $("policy-link").textContent = tr("Privacy Policy");
-    const ring = $("ring"), stage = $("stage");
+    const ring = $("ring"), stage = $("stage"), scene = document.querySelector(".scene"), panelEl = $("panel");
     const ctx = document.createElement("canvas").getContext("2d");
     let rowsData = [], borderData = [], spin = 0, last = performance.now();
-    let rebuildRequest = 0, frameRequest = 0;
+    let rebuildRequest = 0, frameRequest = 0, centerStagePending = false;
 
     function build() {
       rebuildRequest++;
@@ -851,21 +851,6 @@
     // Keep the perspective distance above the radius so text does not pass behind the camera.
     const persp = () => Math.max(CFG.perspective, CFG.radius * 1.3 + CFG.fontSize);
 
-    // Available display area, updated by ResizeObserver.
-    let avail = { w: innerWidth, h: innerHeight };
-
-    // Scale the entire scene to fit the available display area.
-    function fit() {
-      const R = CFG.radius, fs = CFG.fontSize, P = persp();
-      const tx = CFG.tiltX * Math.PI / 180, tz = CFG.tiltZ * Math.PI / 180;
-      const k = P / (P - R);   // Magnification at the frontmost point.
-      const w0 = (2 * R + fs * 2) * k + 40;
-      const h0 = (Math.max(0, CFG.text.split("\n").length - 1) * fs * CFG.rowGap + 2 * R * Math.abs(Math.sin(tx)) + fs * 2) * k + 40;
-      const w = w0 * Math.abs(Math.cos(tz)) + h0 * Math.abs(Math.sin(tz));
-      const h = w0 * Math.abs(Math.sin(tz)) + h0 * Math.abs(Math.cos(tz));
-      stage.style.transform = `scale(${Math.min(1, avail.w / w, avail.h / h)})`;
-    }
-
     function updateSceneSettings() {
       stage.style.perspective = persp() + "px";
       ring.style.transform = `rotateZ(${CFG.tiltZ}deg) rotateX(${-CFG.tiltX}deg)`;
@@ -891,7 +876,37 @@
           el.style.backgroundSize = `${circumference}px ${CFG.borderWidth}px`;
         }
       });
-      fit();
+      centerStagePending = true;
+      scheduleFrame();
+    }
+
+    function centerStage() {
+      // Perspective shifts the projected bounds as the cylinder radius changes.
+      const elements = ring.querySelectorAll(".ch, .border, .border-image-segment");
+      if (!elements.length) {
+        stage.style.transform = "";
+        return;
+      }
+      stage.style.transform = "";
+      let top = Infinity, bottom = -Infinity;
+      let left = Infinity, right = -Infinity;
+      elements.forEach(el => {
+        const bounds = el.getBoundingClientRect();
+        top = Math.min(top, bounds.top);
+        bottom = Math.max(bottom, bounds.bottom);
+        left = Math.min(left, bounds.left);
+        right = Math.max(right, bounds.right);
+      });
+      const sceneBounds = scene.getBoundingClientRect();
+      const stageBounds = stage.getBoundingClientRect();
+      const scale = panelEl.open
+        ? Math.min(1, sceneBounds.width / (right - left), sceneBounds.height / (bottom - top))
+        : 1;
+      const offsetX = (sceneBounds.left + sceneBounds.right) / 2
+        - (stageBounds.left + ((left + right) / 2 - stageBounds.left) * scale);
+      const offsetY = (sceneBounds.top + sceneBounds.bottom) / 2
+        - (stageBounds.top + ((top + bottom) / 2 - stageBounds.top) * scale);
+      stage.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
     }
 
     function frame(now) {
@@ -925,6 +940,10 @@
           c.el.style.transform = `translate(-50%,-50%) rotateY(${th}rad) translateZ(${R}px) scale(${s})`;
         }
       });
+      if (centerStagePending) {
+        centerStage();
+        centerStagePending = false;
+      }
       if (animate) scheduleFrame(true);
     }
 
@@ -1755,13 +1774,12 @@
 
     if (innerWidth > 700) $("panel").open = true;
     // Reduce the scene's available area by the panel height to keep the animation from overlapping it.
-    const panelEl = $("panel"), sceneEl = document.querySelector(".scene");
     const measure = () => {
       const avoid = Math.max(0, Math.round(innerHeight - panelEl.getBoundingClientRect().top)) + 8;
       document.documentElement.style.setProperty("--avoid", avoid + "px");
-      avail = { w: sceneEl.clientWidth, h: sceneEl.clientHeight };
       updateSceneSettings();
     };
+    panelEl.addEventListener("toggle", measure);
     const ro = new ResizeObserver(measure);
     ro.observe(panelEl); ro.observe(document.body);
 
