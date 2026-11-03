@@ -1315,24 +1315,24 @@
         varying float vFacing;
         varying float vOpacity;
         void main() {
+          if (uBackVisible < 0.5 && vFacing <= 0.0) discard;
+          float depth = clamp(vOpacity, 0.0, 1.0);
+          float alpha = uFadeEnabled > 0.5
+            ? uMinOpacity + (1.0 - uMinOpacity) * pow(depth, uFade)
+            : 1.0;
           if (uLayer == 0) {
-            if (uBackVisible < 0.5 && vFacing <= 0.0) discard;
             vec4 color = texture2D(uContentTexture, vec2(fract(vTexCoord.x), vTexCoord.y));
             if (color.a < 0.01) discard;
-            float depth = clamp(vOpacity, 0.0, 1.0);
-            float alpha = uFadeEnabled > 0.5
-              ? uMinOpacity + (1.0 - uMinOpacity) * pow(depth, uFade)
-              : 1.0;
             gl_FragColor = vec4(color.rgb, color.a * alpha);
           } else if (uLayer == 1) {
-            float patternPosition = fract(vObjectTexCoord.x * uPatternScale);
+            float patternPosition = fract(vTexCoord.x * uPatternScale);
             if (uPattern == 1 && patternPosition > 0.24) discard;
             if (uPattern == 2 && patternPosition > 0.62) discard;
-            gl_FragColor = uBorderColor;
+            gl_FragColor = vec4(uBorderColor.rgb, uBorderColor.a * alpha);
           } else {
-            vec4 color = texture2D(uBorderTexture, vObjectTexCoord);
+            vec4 color = texture2D(uBorderTexture, vec2(fract(vTexCoord.x), vTexCoord.y));
             if (color.a < 0.01) discard;
-            gl_FragColor = color;
+            gl_FragColor = vec4(color.rgb, color.a * alpha);
           }
         }
       `;
@@ -1539,7 +1539,7 @@
           for (const border of borderMeshes) {
             const direction = settings.alternate && border.row % 2 ? -1 : 1;
             const angle = settings.borderRotation === "fixed" ? 0 : direction * rotation;
-            draw(border.mesh, angle, border.y, border.image ? 2 : 1, false, 0, border.pattern);
+            draw(border.mesh, angle, border.y, border.image ? 2 : 1, true, settings.depthScale, border.pattern);
           }
           gl.disableVertexAttribArray(attributes.position);
           gl.disableVertexAttribArray(attributes.texCoord);
