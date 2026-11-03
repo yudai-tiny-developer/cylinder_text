@@ -13,6 +13,10 @@
       --panel: rgba(255, 255, 255, .88);
       --line: #c5cddc;
       --accent: #2f5fd0;
+      --status-success: #176b3a;
+      --status-success-bg: #e7f5eb;
+      --status-error: #a12622;
+      --status-error-bg: #fdebea;
       box-sizing: border-box;
       padding-top: env(safe-area-inset-top, 0px);
       padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -25,6 +29,10 @@
         --panel: rgba(20, 34, 58, .9);
         --line: #2d4266;
         --accent: #f2b45a;
+        --status-success: #a5d6a7;
+        --status-success-bg: rgba(46, 125, 50, .18);
+        --status-error: #ffaaa5;
+        --status-error-bg: rgba(198, 40, 40, .18);
       }
     }
 
@@ -34,6 +42,10 @@
       --panel: rgba(20, 34, 58, .9);
       --line: #2d4266;
       --accent: #f2b45a;
+      --status-success: #a5d6a7;
+      --status-success-bg: rgba(46, 125, 50, .18);
+      --status-error: #ffaaa5;
+      --status-error-bg: rgba(198, 40, 40, .18);
     }
 
     html,
@@ -105,6 +117,11 @@
       -webkit-text-stroke: var(--sw, 0px) var(--sc, transparent);
       paint-order: stroke fill;
       backface-visibility: visible;
+    }
+
+    .text-field textarea:disabled {
+      opacity: .45;
+      cursor: not-allowed;
     }
 
     .border {
@@ -232,6 +249,69 @@
 
     .f.font-field {
       grid-template-columns: 7.5em minmax(0, 1fr) auto;
+    }
+
+    .f.text-field {
+      grid-template-columns: 7.5em minmax(0, 1fr) auto;
+    }
+
+    .text-image-actions {
+      display: grid;
+      gap: 4px;
+    }
+
+    .text-image-actions button {
+      padding: 4px 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      font-size: 12px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .file-load-progress {
+      grid-column: 2 / -1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      font-size: 12px;
+    }
+
+    .presets .file-load-progress {
+      grid-column: 1 / -1;
+    }
+
+    .file-load-progress[hidden] {
+      display: none;
+    }
+
+    .file-load-progress progress {
+      flex: 1;
+      min-width: 0;
+      height: 8px;
+      accent-color: var(--accent);
+    }
+
+    .file-load-progress span {
+      white-space: nowrap;
+    }
+
+    .file-load-progress button {
+      padding: 3px 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .image-segment {
+      background-repeat: no-repeat;
     }
 
     .f.border-style-field {
@@ -429,6 +509,36 @@
       opacity: .8;
     }
 
+    .presets .status[data-kind="success"],
+    .presets .status[data-kind="error"] {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      opacity: 1;
+    }
+
+    .presets .status[data-kind="success"] {
+      color: var(--status-success);
+      background: var(--status-success-bg);
+    }
+
+    .presets .status[data-kind="error"] {
+      color: var(--status-error);
+      background: var(--status-error-bg);
+    }
+
+    .presets .status[data-kind="success"]::before {
+      content: "✓";
+      font-weight: 700;
+    }
+
+    .presets .status[data-kind="error"]::before {
+      content: "!";
+      font-weight: 700;
+    }
+
     .namedlg {
       width: min(320px, calc(100vw - 32px));
       padding: 16px;
@@ -581,6 +691,7 @@
       fade: 1.5,              // Fade curve toward the back; larger values fade faster.
       backVisible: true,      // Show the back of the cylinder (mirrored text).
       mirrorFront: false,     // Mirror text on the front side and un-mirror the back side.
+      image: "",
       paused: false
     };
     const CFG = { ...DEFAULTS };
@@ -671,6 +782,11 @@
           || (obj.borderImage && !/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.borderImage))) return null;
         settings.borderImage = obj.borderImage;
       }
+      if (Object.prototype.hasOwnProperty.call(obj, "image")) {
+        if (typeof obj.image !== "string"
+          || (obj.image && !/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.image))) return null;
+        settings.image = obj.image;
+      }
       return Object.keys(settings).length ? settings : null;
     }
 
@@ -686,6 +802,7 @@
           CFG[u.k] = typeof value === "number" ? Math.min(u.max, Math.max(u.min, value)) : value;
         }
         if (typeof settings.borderImage === "string") CFG.borderImage = settings.borderImage;
+        if (typeof settings.image === "string") CFG.image = settings.image;
       } else if (saved) lastSettingsLoadFailed = true;
     } catch (e) {
       lastSettingsLoadFailed = true;
@@ -700,6 +817,7 @@
       "Settings": "設定", "Privacy Policy": "プライバシーポリシー", "Terms of Use": "利用規約",
       "If the animation isn't smooth, check that hardware acceleration is enabled in your browser settings.": "アニメーションが滑らかでない場合は、ブラウザーのグラフィックアクセラレーションが有効かご確認ください。",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
+      "Clear image": "画像をクリア",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
       "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top only (all rows)": "全体の上だけに枠", "Bottom only (all rows)": "全体の下だけに枠",
       "Top and bottom (each row)": "各行の上下に枠", "Top only (each row)": "各行の上だけに枠", "Bottom only (each row)": "各行の下だけに枠", "Border color": "枠の色",
@@ -723,6 +841,13 @@
       "Unsupported image file": "対応していない画像形式です（PNG、JPEG、WebP、GIF）",
       "Image upload failed": "画像を読み込めませんでした",
       "Image uploaded": "画像を読み込みました",
+      "Cancel load": "読み込みを中止",
+      "Reading image": "画像を読み込み中",
+      "Decoding image": "画像を展開中",
+      "Image upload canceled": "画像の読み込みを中止しました",
+      "Reading settings file": "設定ファイルを読み込み中",
+      "Processing settings file": "設定ファイルを処理中",
+      "Settings import canceled": "設定の読み込みを中止しました",
       "Download JSON": "JSONを書き出す", "Import JSON": "JSONを読み込む",
       "Settings exported": "設定をJSONに書き出しました", "Settings imported": "設定を読み込みました",
       "Invalid settings JSON": "設定JSONの形式が正しくありません", "Could not read settings file": "設定ファイルを読み込めませんでした",
@@ -739,17 +864,40 @@
     const tr = s => JA ? (JA_TRANSLATIONS[s] ?? s) : s;
     document.documentElement.lang = JA ? "ja" : "en";
     const $ = id => document.getElementById(id);
-    let decodedImageSource = "", decodedImagePromise = null;
+    let decodedImageSource = "", decodedImagePromise = null, decodedImage = null, decodedImageObjectUrl = "";
+    function cacheDecodedImageSource(src, image) {
+      if (decodedImageObjectUrl) URL.revokeObjectURL(decodedImageObjectUrl);
+      decodedImageSource = src;
+      decodedImage = image;
+      decodedImagePromise = Promise.resolve(image);
+      decodedImageObjectUrl = "";
+    }
+
+    function cacheDecodedImageBlob(src, blob, image) {
+      cacheDecodedImageSource(src, image);
+      decodedImageObjectUrl = URL.createObjectURL(blob);
+    }
+
+    function getImageRenderSource(src) {
+      return src === decodedImageSource && decodedImageObjectUrl ? decodedImageObjectUrl : src;
+    }
+
     function decodeImageSource(src) {
       if (decodedImageSource === src && decodedImagePromise) return decodedImagePromise;
+      if (decodedImageObjectUrl) URL.revokeObjectURL(decodedImageObjectUrl);
+      decodedImageObjectUrl = "";
       decodedImageSource = src;
       decodedImagePromise = new Promise((resolve, reject) => {
         const image = new Image();
-        image.onload = () => resolve(image);
+        image.onload = () => {
+          if (decodedImageSource === src) decodedImage = image;
+          resolve(image);
+        };
         image.onerror = () => {
           if (decodedImageSource === src) {
             decodedImageSource = "";
             decodedImagePromise = null;
+            decodedImage = null;
           }
           reject(new Error("Could not decode image"));
         };
@@ -758,27 +906,286 @@
       return decodedImagePromise;
     }
 
-    function readImageFile(file) {
+    function decodeImageBlob(blob) {
+      if ("createImageBitmap" in window) return createImageBitmap(blob);
+      const objectUrl = URL.createObjectURL(blob);
+      return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve(image);
+        };
+        image.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Could not decode image"));
+        };
+        image.src = objectUrl;
+      });
+    }
+
+    function createFileLoadProgress() {
+      const row = document.createElement("div");
+      row.className = "file-load-progress";
+      row.hidden = true;
+      const progress = document.createElement("progress");
+      progress.max = 100;
+      progress.value = 0;
+      const label = document.createElement("span");
+      label.setAttribute("role", "status");
+      label.setAttribute("aria-live", "polite");
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = tr("Cancel load");
+      let controller = null;
+      cancel.addEventListener("click", () => controller?.abort());
+      row.append(progress, label, cancel);
+      return {
+        row,
+        start(value, readingLabel, processingLabel) {
+          controller = value;
+          this.readingLabel = readingLabel;
+          this.processingLabel = processingLabel;
+          progress.value = 0;
+          label.textContent = `${tr(readingLabel)} 0%`;
+          row.hidden = false;
+        },
+        update(phase, loaded, total) {
+          if (phase === "processing") {
+            progress.removeAttribute("value");
+            label.textContent = tr(this.processingLabel);
+          } else {
+            progress.value = total ? loaded / total * 100 : 0;
+            const percent = total ? Math.floor(loaded / total * 100) : 0;
+            label.textContent = `${tr(this.readingLabel)} ${percent}%`;
+          }
+        },
+        finish() {
+          controller = null;
+          this.readingLabel = "";
+          this.processingLabel = "";
+          row.hidden = true;
+        }
+      };
+    }
+
+    function readSettingsFile(file, signal, onProgress) {
+      if (signal.aborted) return Promise.reject(new DOMException("Settings import canceled", "AbortError"));
+      const schema = UI.map(u => ({
+        key: u.k,
+        type: u.type || "number",
+        options: u.options?.map(option => option.value)
+      }));
+      const workerSource = `
+        self.onmessage = async ({ data: { file, schema } }) => {
+          try {
+            const decoder = new TextDecoder();
+            const chunks = [];
+            const chunkSize = 1024 * 1024;
+            for (let offset = 0; offset < file.size; offset += chunkSize) {
+              const end = Math.min(file.size, offset + chunkSize);
+              chunks.push(decoder.decode(
+                new Uint8Array(await file.slice(offset, end).arrayBuffer()),
+                { stream: true }
+              ));
+              self.postMessage({ type: "progress", phase: "reading", loaded: end, total: file.size });
+            }
+            chunks.push(decoder.decode());
+            self.postMessage({ type: "progress", phase: "processing" });
+            let obj;
+            try {
+              obj = JSON.parse(chunks.join(""));
+            } catch {
+              self.postMessage({ type: "invalid" });
+              return;
+            }
+            if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+              self.postMessage({ type: "invalid" });
+              return;
+            }
+            const own = (key) => Object.prototype.hasOwnProperty.call(obj, key);
+            if (own("borderSpacing")) {
+              if (!own("borderTopSpacing")) obj.borderTopSpacing = obj.borderSpacing;
+              if (!own("borderBottomSpacing")) obj.borderBottomSpacing = obj.borderSpacing;
+              delete obj.borderSpacing;
+            }
+            const settings = {};
+            for (const field of schema) {
+              if (!own(field.key)) continue;
+              const value = obj[field.key];
+              const valid = field.type === "bool" ? typeof value === "boolean"
+                : field.type === "color" ? typeof value === "string" && /^#[\\da-f]{6}$/i.test(value)
+                  : field.type === "select" ? typeof value === "string" && field.options.includes(value)
+                    : field.type === "text" ? typeof value === "string"
+                      : typeof value === "number" && Number.isFinite(value);
+              if (!valid) {
+                self.postMessage({ type: "invalid" });
+                return;
+              }
+              settings[field.key] = value;
+            }
+            const imagePattern = /^data:image\\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i;
+            for (const key of ["borderImage", "image"]) {
+              if (!own(key)) continue;
+              if (typeof obj[key] !== "string" || (obj[key] && !imagePattern.test(obj[key]))) {
+                self.postMessage({ type: "invalid" });
+                return;
+              }
+              settings[key] = obj[key];
+            }
+            if (!Object.keys(settings).length) {
+              self.postMessage({ type: "invalid" });
+              return;
+            }
+            let imageBlob = null;
+            let imageBitmap = null;
+            if (settings.image) {
+              imageBlob = await (await fetch(settings.image)).blob();
+              if (typeof createImageBitmap === "function") {
+                try {
+                  imageBitmap = await createImageBitmap(imageBlob);
+                } catch {
+                  imageBitmap = null;
+                }
+              }
+            }
+            self.postMessage(
+              { type: "result", settings, imageBlob, imageBitmap },
+              imageBitmap ? [imageBitmap] : []
+            );
+          } catch {
+            self.postMessage({ type: "error" });
+          }
+        };
+      `;
+      const workerUrl = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
+      let worker;
+      try {
+        worker = new Worker(workerUrl);
+      } catch (error) {
+        URL.revokeObjectURL(workerUrl);
+        return Promise.reject(error);
+      }
+      URL.revokeObjectURL(workerUrl);
+      return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = (callback, value) => {
+          if (settled) return;
+          settled = true;
+          signal.removeEventListener("abort", abort);
+          worker.onmessage = null;
+          worker.onerror = null;
+          worker.terminate();
+          callback(value);
+        };
+        const abort = () => finish(reject, new DOMException("Settings import canceled", "AbortError"));
+        signal.addEventListener("abort", abort, { once: true });
+        if (signal.aborted) {
+          abort();
+          return;
+        }
+        worker.onmessage = ({ data }) => {
+          if (data.type === "progress") {
+            onProgress(data.phase, data.loaded, data.total);
+          } else if (data.type === "result") {
+            finish(resolve, data);
+          } else if (data.type === "invalid") {
+            finish(reject, new Error("Invalid settings JSON"));
+          } else {
+            finish(reject, new Error("Could not read settings file"));
+          }
+        };
+        worker.onerror = () => finish(reject, new Error("Could not read settings file"));
+        try {
+          worker.postMessage({ file, schema });
+        } catch (error) {
+          finish(reject, error);
+        }
+      });
+    }
+
+    function waitForAbort(promise, signal) {
+      if (signal.aborted) return Promise.reject(new DOMException("Image upload canceled", "AbortError"));
+      return new Promise((resolve, reject) => {
+        const cleanup = () => signal.removeEventListener("abort", onAbort);
+        const onAbort = () => {
+          cleanup();
+          reject(new DOMException("Image upload canceled", "AbortError"));
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+        promise.then(value => { cleanup(); resolve(value); }, error => { cleanup(); reject(error); });
+      });
+    }
+
+    function readImageFile(file, signal, onProgress) {
       const supportedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
       if (!supportedTypes.includes(file.type)) return Promise.reject(new Error("Unsupported image file"));
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
+        let settled = false;
+        const finish = (callback, value) => {
+          if (settled) return;
+          settled = true;
+          signal.removeEventListener("abort", abort);
+          callback(value);
+        };
+        const abort = () => {
+          if (reader.readyState === FileReader.LOADING) reader.abort();
+          finish(reject, new DOMException("Image upload canceled", "AbortError"));
+        };
+        signal.addEventListener("abort", abort, { once: true });
+        if (signal.aborted) {
+          abort();
+          return;
+        }
+        reader.onprogress = event => {
+          if (event.lengthComputable) onProgress("reading", event.loaded, event.total);
+        };
         reader.onload = async () => {
           try {
-            if (typeof reader.result !== "string"
-              || !/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(reader.result)) {
+            const src = reader.result;
+            if (typeof src !== "string" || !src.startsWith(`data:${file.type};base64,`)) {
               throw new Error("Unsupported image file");
             }
-            await decodeImageSource(reader.result);
-            resolve(reader.result);
+            onProgress("processing");
+            let image;
+            if (file.type !== "image/gif" && "createImageBitmap" in window) {
+              const decoding = createImageBitmap(file).then(bitmap => {
+                if (signal.aborted) {
+                  bitmap.close();
+                  throw new DOMException("Image upload canceled", "AbortError");
+                }
+                return bitmap;
+              });
+              image = await waitForAbort(decoding, signal);
+            } else {
+              image = await waitForAbort(decodeImageSource(src), signal);
+            }
+            if (signal.aborted) throw new DOMException("Image upload canceled", "AbortError");
+            cacheDecodedImageSource(src, image);
+            decodedImageObjectUrl = URL.createObjectURL(file);
+            finish(resolve, src);
           } catch (error) {
-            reject(error);
+            finish(reject, error);
           }
         };
-        reader.onerror = () => reject(reader.error || new Error("Could not read image"));
+        reader.onerror = () => finish(reject, reader.error || new Error("Could not read image"));
+        reader.onabort = () => finish(reject, new DOMException("Image upload canceled", "AbortError"));
         reader.readAsDataURL(file);
       });
     }
+
+    function getImageDisplaySize(settings, image = decodedImage) {
+      if (!settings.image) return null;
+      const aspectRatio = image && image === decodedImage && decodedImageSource === settings.image
+        ? (image.width || image.naturalWidth) / (image.height || image.naturalHeight) : 1;
+      const circumference = 2 * Math.PI * settings.radius;
+      const imageWidth = settings.fontSize * 3 * aspectRatio;
+      const count = settings.repeat ? Math.max(1, Math.round(circumference / imageWidth)) : 1;
+      const width = settings.repeat ? circumference / count : Math.min(circumference, imageWidth);
+      return { width, height: width / aspectRatio, count };
+    }
+
+    const getImageSegmentCount = imageSize => Math.max(2, Math.ceil(imageSize.width / 10));
 
     $("panel").firstElementChild.textContent = tr("Settings");
     $("policy-link").textContent = tr("Privacy Policy");
@@ -789,56 +1196,108 @@
     let rowsData = [], borderData = [], spin = 0, last = performance.now();
     let rebuildRequest = 0, frameRequest = 0;
 
-    function build() {
-      rebuildRequest++;
+    const BUILD_BATCH_SIZE = 256;
+    const yieldBuild = () => new Promise(resolve => setTimeout(resolve, 0));
+
+    async function build(request = ++rebuildRequest) {
+      const settings = { ...CFG };
       ring.innerHTML = ""; rowsData = []; borderData = [];
-      const { radius: R, fontSize: fs, letterSpacing: ls, fontWeight: fw } = CFG;
-      const family = familyCss(CFG.fontFamily);
+      const { radius: R, fontSize: fs, letterSpacing: ls, fontWeight: fw } = settings;
+      const family = familyCss(settings.fontFamily);
       ring.style.fontFamily = family;
       ctx.font = `${fw} ${fs}px ${family}`;
 
-      const lines = CFG.text.split("\n");   // One line becomes one row.
-      const lineLayouts = lines.map(line => {
-        const unit = line === "" ? [] : Array.from(line + (CFG.repeat ? CFG.separator : ""));
-        const widths = unit.map(c => ctx.measureText(c).width + ls * fs);
-        if (CFG.mirrorFront) {
+      const imageMode = Boolean(settings.image && decodedImage && decodedImageSource === settings.image);
+      const imageSize = imageMode ? getImageDisplaySize(settings) : null;
+      const lines = imageMode ? [""] : settings.text.split("\n");   // One line becomes one row.
+      const lineLayouts = [];
+      let measuredCount = 0;
+      for (const line of lines) {
+        const unit = [];
+        const widths = [];
+        let unitW = 0;
+        const source = line === "" ? "" : line + (settings.repeat ? settings.separator : "");
+        for (const ch of source) {
+          unit.push(ch);
+          const width = ctx.measureText(ch).width + ls * fs;
+          widths.push(width);
+          unitW += width;
+          if (++measuredCount % BUILD_BATCH_SIZE === 0) {
+            await yieldBuild();
+            if (request !== rebuildRequest) return;
+          }
+        }
+        if (settings.mirrorFront) {
           unit.reverse();
           widths.reverse();
         }
-        return { unit, widths, unitW: widths.reduce((a, b) => a + b, 0) || 1 };
-      });
-      const start = CFG.repeat ? 0 : -lineLayouts.reduce((max, layout) => Math.max(max, layout.unitW), 0) / 2;
+        lineLayouts.push({ unit, widths, unitW: unitW || 1 });
+      }
+      let maxUnitW = 0;
+      for (const layout of lineLayouts) maxUnitW = Math.max(maxUnitW, layout.unitW);
+      const start = settings.repeat ? 0 : -maxUnitW / 2;
       const C = 2 * Math.PI * R;
-      const ys = lines.map((_, r) => (r - (lines.length - 1) / 2) * fs * CFG.rowGap);
-      if (CFG.borderMode !== "none") {
-        const topOffset = fs / 2 + CFG.borderTopSpacing;
-        const bottomOffset = fs / 2 + CFG.borderBottomSpacing;
-        const allRows = CFG.borderMode === "all" || CFG.borderMode === "allTop" || CFG.borderMode === "allBottom";
-        const drawTop = CFG.borderMode !== "allBottom" && CFG.borderMode !== "rowsBottom";
-        const drawBottom = CFG.borderMode !== "allTop" && CFG.borderMode !== "rowsTop";
+      const ys = [];
+      for (let r = 0; r < lines.length; r++) {
+        ys.push((r - (lines.length - 1) / 2) * fs * settings.rowGap);
+        if (r > 0 && r % BUILD_BATCH_SIZE === 0) {
+          await yieldBuild();
+          if (request !== rebuildRequest) return;
+        }
+      }
+      let builtCount = 0;
+      let pendingTarget = null;
+      let pendingElements = document.createDocumentFragment();
+      let pendingCount = 0;
+      const flushBatch = () => {
+        if (!pendingCount) return;
+        pendingTarget.appendChild(pendingElements);
+        pendingElements = document.createDocumentFragment();
+        pendingCount = 0;
+      };
+      const appendInBatches = (target, element) => {
+        if (pendingTarget && pendingTarget !== target) flushBatch();
+        pendingTarget = target;
+        pendingElements.appendChild(element);
+        pendingCount++;
+        if (++builtCount % BUILD_BATCH_SIZE === 0) {
+          flushBatch();
+          return yieldBuild().then(() => request === rebuildRequest);
+        }
+        return true;
+      };
+      if (settings.borderMode !== "none") {
+        const rowHalfHeight = imageSize ? imageSize.height / 2 : fs / 2;
+        const topOffset = rowHalfHeight + settings.borderTopSpacing;
+        const bottomOffset = rowHalfHeight + settings.borderBottomSpacing;
+        const allRows = settings.borderMode === "all" || settings.borderMode === "allTop" || settings.borderMode === "allBottom";
+        const drawTop = settings.borderMode !== "allBottom" && settings.borderMode !== "rowsBottom";
+        const drawBottom = settings.borderMode !== "allTop" && settings.borderMode !== "rowsTop";
         const bounds = allRows
           ? [{ top: ys[0] - topOffset, bottom: ys[ys.length - 1] + bottomOffset, topRow: 0, bottomRow: ys.length - 1 }]
-          : ys.map((y, row) => ({ top: y - topOffset, bottom: y + bottomOffset, topRow: row, bottomRow: row }));
+          : ys.map((y, rowIndex) => ({ top: y - topOffset, bottom: y + bottomOffset, topRow: rowIndex, bottomRow: rowIndex }));
         for (const bound of bounds) {
           const positions = [];
           if (drawTop) positions.push([bound.top, bound.topRow]);
           if (drawBottom) positions.push([bound.bottom, bound.bottomRow]);
           for (const [y, row] of positions) {
-            if (CFG.borderStyle === "image" && CFG.borderImage) {
+            if (settings.borderStyle === "image" && settings.borderImage) {
               const segmentCount = 180;
               const circumference = 2 * Math.PI * R;
               for (let i = 0; i < segmentCount; i++) {
+                if (request !== rebuildRequest) return;
                 const border = document.createElement("div");
                 border.className = "border-image-segment";
                 border.setAttribute("aria-hidden", "true");
                 const segmentWidth = circumference / segmentCount;
                 border.style.left = -segmentWidth / 2 + "px";
-                border.style.top = -CFG.borderWidth / 2 + "px";
+                border.style.top = -settings.borderWidth / 2 + "px";
                 border.style.width = segmentWidth + "px";
-                border.style.backgroundImage = `url("${CFG.borderImage}")`;
-                border.style.backgroundSize = `${circumference}px ${CFG.borderWidth}px`;
+                border.style.backgroundImage = `url("${settings.borderImage}")`;
+                border.style.backgroundSize = `${circumference}px ${settings.borderWidth}px`;
                 border.style.backgroundPosition = `${-i * circumference / segmentCount}px 0`;
-                ring.appendChild(border);
+                const appended = appendInBatches(ring, border);
+                if (appended !== true && !await appended) return;
                 borderData.push({ el: border, y, row, angle: (i + 0.5) * Math.PI * 2 / segmentCount });
               }
               continue;
@@ -851,39 +1310,75 @@
             border.style.width = 2 * R + "px";
             border.style.height = 2 * R + "px";
             border.style.transform = `translateY(${y}px) rotateX(90deg)`;
-            ring.appendChild(border);
+            const appended = appendInBatches(ring, border);
+            if (appended !== true && !await appended) return;
             borderData.push({ el: border, y, row });
           }
         }
       }
 
-      for (let r = 0; r < lines.length; r++) {
+      if (imageMode) {
+        const segmentCount = getImageSegmentCount(imageSize);
+        const segmentWidth = imageSize.width / segmentCount;
+        const chars = [];
+        for (let copy = 0; copy < imageSize.count; copy++) {
+          const copyOffset = (copy - (imageSize.count - 1) / 2) * imageSize.width;
+          for (let i = 0; i < segmentCount; i++) {
+            if (request !== rebuildRequest) return;
+            const el = document.createElement("div");
+            el.className = "ch image-segment";
+            el.setAttribute("aria-hidden", "true");
+            el.style.width = segmentWidth + "px";
+            el.style.height = imageSize.height + "px";
+            el.style.backgroundImage = `url("${getImageRenderSource(settings.image)}")`;
+            el.style.backgroundSize = `${imageSize.width}px ${imageSize.height}px`;
+            el.style.backgroundPosition = `${-i * segmentWidth}px 0`;
+            const appended = appendInBatches(ring, el);
+            if (appended !== true && !await appended) return;
+            chars.push({
+              el, image: true,
+              a: (copyOffset + (i + 0.5) * segmentWidth - imageSize.width / 2) / R
+            });
+          }
+        }
+        rowsData.push({ y: 0, chars, phase: 0 });
+      } else for (let r = 0; r < lines.length; r++) {
         // Calculate character widths and repetitions for each line; empty lines remain empty rows.
         const { unit, widths, unitW } = lineLayouts[r];
-        const n = CFG.repeat ? Math.max(1, Math.round(C / unitW)) : 1;
-        const k = CFG.repeat ? C / (n * unitW) : 1;   // Adjust spacing to fit the circumference exactly.
+        const n = settings.repeat ? Math.max(1, Math.round(C / unitW)) : 1;
+        const k = settings.repeat ? C / (n * unitW) : 1;   // Adjust spacing to fit the circumference exactly.
         const row = document.createElement("div");
         row.className = "row";
-        const y = (r - (lines.length - 1) / 2) * fs * CFG.rowGap;
+        const y = ys[r];
         row.style.transform = `translateY(${y}px)`;
+        flushBatch();
+        ring.appendChild(row);
+        pendingTarget = row;
         const chars = [];
         let cum = start;
         for (let i = 0; i < n; i++) {
-          unit.forEach((ch, j) => {
+          for (let j = 0; j < unit.length; j++) {
+            if (request !== rebuildRequest) return;
+            const ch = unit[j];
             const el = document.createElement("span");
             el.className = "ch";
             el.textContent = ch === " " ? "\u00a0" : ch;
             el.style.fontSize = fs + "px";
             el.style.fontWeight = fw;
-            row.appendChild(el);
+            const appended = appendInBatches(row, el);
+            if (appended !== true && !await appended) return;
             chars.push({ el, text: ch, a: (cum + widths[j] / 2) * k / R });
             cum += widths[j];
-          });
+          }
         }
-        ring.appendChild(row);
-        const direction = CFG.alternate && r % 2 ? -1 : 1;
+        const direction = settings.alternate && r % 2 ? -1 : 1;
         rowsData.push({ y, chars, phase: (1 - direction) * spin });
+        if (r > 0 && r % BUILD_BATCH_SIZE === 0) {
+          await yieldBuild();
+          if (request !== rebuildRequest) return;
+        }
       }
+      flushBatch();
       updateSceneSettings();
     }
 
@@ -891,9 +1386,17 @@
     function rebuild() {
       const request = ++rebuildRequest;
       const spec = `${CFG.fontWeight} ${CFG.fontSize}px ${familyCss(CFG.fontFamily)}`;
-      const loading = document.fonts ? document.fonts.load(spec, CFG.text + CFG.separator) : Promise.resolve();
-      loading.catch(() => { }).then(() => {
-        if (request === rebuildRequest) build();
+      const fontLoading = document.fonts
+        ? document.fonts.load(spec, CFG.text.slice(0, 1000) + CFG.separator.slice(0, 100)).catch(() => { })
+        : Promise.resolve();
+      const imageLoading = CFG.image ? decodeImageSource(CFG.image) : Promise.resolve(null);
+      return Promise.all([fontLoading, imageLoading]).then(() => {
+        if (request === rebuildRequest) return build(request);
+      }).catch(error => {
+        if (request === rebuildRequest) {
+          console.error("Could not decode uploaded image", error);
+          say("Image upload failed", "error");
+        }
       });
     }
 
@@ -912,20 +1415,22 @@
       const P = persp(settings);
       const frontScale = P / (P - R);
       const widthAtZeroTilt = (2 * R + fs * 2) * frontScale + 40;
-      const heightAtZeroTilt = (Math.max(0, settings.text.split("\n").length - 1) * fs * settings.rowGap
-        + 2 * R * Math.abs(Math.sin(settings.tiltX * Math.PI / 180)) + fs * 2) * frontScale + 40;
+      const imageSize = getImageDisplaySize(settings);
+      const rowSpan = settings.image ? 0 : Math.max(0, settings.text.split("\n").length - 1) * fs * settings.rowGap;
+      const rowHalfHeight = imageSize ? imageSize.height / 2 : fs / 2;
+      const heightAtZeroTilt = (rowSpan + 2 * R * Math.abs(Math.sin(settings.tiltX * Math.PI / 180))
+        + rowHalfHeight * 2) * frontScale + 40;
       const tiltZ = settings.tiltZ * Math.PI / 180;
       const width = widthAtZeroTilt * Math.abs(Math.cos(tiltZ)) + heightAtZeroTilt * Math.abs(Math.sin(tiltZ));
       const height = widthAtZeroTilt * Math.abs(Math.sin(tiltZ)) + heightAtZeroTilt * Math.abs(Math.cos(tiltZ));
       const tiltX = settings.tiltX * Math.PI / 180;
       const cosX = Math.cos(tiltX), sinX = Math.sin(tiltX);
       const cosZ = Math.cos(tiltZ), sinZ = Math.sin(tiltZ);
-      const rowSpan = Math.max(0, settings.text.split("\n").length - 1) * fs * settings.rowGap;
       const borderExtra = settings.borderMode === "none" ? 0
         : Math.max(settings.borderTopSpacing, settings.borderBottomSpacing) + settings.borderWidth / 2;
-      const projectedRadius = R + fs / 2 + (settings.borderMode === "none" ? 0 : settings.borderWidth / 2);
-      const top = -rowSpan / 2 - fs / 2 - borderExtra;
-      const bottom = rowSpan / 2 + fs / 2 + borderExtra;
+      const projectedRadius = R + rowHalfHeight + (settings.borderMode === "none" ? 0 : settings.borderWidth / 2);
+      const top = -rowSpan / 2 - rowHalfHeight - borderExtra;
+      const bottom = rowSpan / 2 + rowHalfHeight + borderExtra;
       let minY = Infinity, maxY = -Infinity;
       for (const y of [top, bottom]) {
         for (let i = 0; i < 1440; i++) {
@@ -1004,7 +1509,7 @@
           const d = Math.max(0, Math.min(1, (z / R + 1) / 2));
           const s = 1 - CFG.depthScale * (1 - d);
           c.el.style.opacity = CFG.minOpacity + (1 - CFG.minOpacity) * Math.pow(d, CFG.fade);
-          const horizontalScale = CFG.mirrorFront ? -s : s;
+          const horizontalScale = CFG.mirrorFront && !c.image ? -s : s;
           c.el.style.transform = `translate(-50%,-50%) rotateY(${th}rad) translateZ(${R}px) scale(${horizontalScale},${s})`;
         }
       });
@@ -1026,10 +1531,14 @@
     const fields = $("fields");
     const inputs = {};
     let borderImageButton = null, borderImageFile = null;
+    let textImageButton = null, clearTextImageButton = null, textImageFile = null;
+    let textImageUploadController = null;
     let loadedPresetName = "";
     let loadedPresetSettings = null;
     let currentCategory = "";
     UI.forEach(u => {
+      let textImageActions = null;
+      let uploadProgress = null;
       if (u.category !== currentCategory) {
         const heading = document.createElement("div");
         heading.className = "settings-category" + (currentCategory ? "" : " first");
@@ -1087,6 +1596,8 @@
         });
       }
       if (u.k === "borderStyle") {
+        uploadProgress = createFileLoadProgress();
+        let uploadController = null;
         borderImageButton = document.createElement("button");
         borderImageButton.type = "button";
         borderImageButton.className = "border-image-upload";
@@ -1099,21 +1610,84 @@
         borderImageFile.addEventListener("change", async () => {
           const file = borderImageFile.files?.[0];
           if (!file) return;
+          uploadController = new AbortController();
+          borderImageButton.disabled = true;
+          uploadProgress.start(uploadController, "Reading image", "Decoding image");
           try {
-            CFG.borderImage = await readImageFile(file);
+            CFG.borderImage = await readImageFile(file, uploadController.signal,
+              (phase, loaded, total) => uploadProgress.update(phase, loaded, total));
             borderImageButton.textContent = tr("Change image");
             recordSettingsHistory(true);
             scheduleSettingsPersistence();
             updatePresetState();
             updateSceneSettings();
             rebuild();
-            say("Image uploaded");
+            say("Image uploaded", "success");
           } catch (error) {
-            say(error.message === "Unsupported image file" ? error.message : "Image upload failed");
+            if (error.name === "AbortError") say("Image upload canceled");
+            else if (error.message === "Unsupported image file") say(error.message, "error");
+            else say("Image upload failed", "error");
           } finally {
+            uploadProgress.finish();
+            uploadController = null;
+            borderImageButton.disabled = false;
             borderImageFile.value = "";
           }
         });
+      }
+      if (u.k === "text") {
+        uploadProgress = createFileLoadProgress();
+        textImageActions = document.createElement("div");
+        textImageActions.className = "text-image-actions";
+        textImageButton = document.createElement("button");
+        textImageButton.type = "button";
+        textImageButton.textContent = "🖼️";
+        textImageButton.addEventListener("click", () => textImageFile.click());
+        textImageFile = document.createElement("input");
+        textImageFile.type = "file";
+        textImageFile.accept = "image/png,image/jpeg,image/webp,image/gif";
+        textImageFile.hidden = true;
+        textImageFile.addEventListener("change", async () => {
+          const file = textImageFile.files?.[0];
+          if (!file) return;
+          textImageUploadController = new AbortController();
+          uploadProgress.start(textImageUploadController, "Reading image", "Decoding image");
+          syncTextImageControls();
+          try {
+            CFG.image = await readImageFile(file, textImageUploadController.signal,
+              (phase, loaded, total) => uploadProgress.update(phase, loaded, total));
+            syncTextImageControls();
+            recordSettingsHistory(true);
+            scheduleSettingsPersistence();
+            updatePresetState();
+            updateSceneSettings();
+            rebuild();
+            say("Image uploaded", "success");
+          } catch (error) {
+            if (error.name === "AbortError") say("Image upload canceled");
+            else if (error.message === "Unsupported image file") say(error.message, "error");
+            else say("Image upload failed", "error");
+          } finally {
+            uploadProgress.finish();
+            textImageUploadController = null;
+            syncTextImageControls();
+            textImageFile.value = "";
+          }
+        });
+        clearTextImageButton = document.createElement("button");
+        clearTextImageButton.type = "button";
+        clearTextImageButton.textContent = tr("Clear image");
+        clearTextImageButton.addEventListener("click", () => {
+          if (!CFG.image) return;
+          CFG.image = "";
+          syncTextImageControls();
+          recordSettingsHistory(true);
+          scheduleSettingsPersistence();
+          updatePresetState();
+          updateSceneSettings();
+          rebuild();
+        });
+        textImageActions.append(textImageButton, clearTextImageButton);
       }
       inp.addEventListener("input", () => {
         CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
@@ -1138,12 +1712,33 @@
       }
       inputs[u.k] = { inp, out, u, wrap };
       wrap.append(name, inp);
-      if (u.k === "borderStyle") wrap.append(borderImageButton, borderImageFile);
+      if (u.k === "text") {
+        wrap.classList.add("text-field");
+        wrap.appendChild(textImageActions);
+        wrap.appendChild(uploadProgress.row);
+        wrap.appendChild(textImageFile);
+      }
+      if (u.k === "borderStyle") wrap.append(borderImageButton, uploadProgress.row, borderImageFile);
       if (fontLoadButton) wrap.append(fontLoadButton);
       if (fontLoadStatus) wrap.append(fontLoadStatus);
       if (out) wrap.append(out);
       fields.appendChild(wrap);
     });
+    function syncTextImageControls() {
+      if (!textImageButton) return;
+      if (!CFG.image && decodedImageObjectUrl) {
+        URL.revokeObjectURL(decodedImageObjectUrl);
+        decodedImageObjectUrl = "";
+      }
+      const label = tr(CFG.image ? "Change image" : "Upload image");
+      textImageButton.title = label;
+      textImageButton.setAttribute("aria-label", label);
+      textImageButton.disabled = Boolean(textImageUploadController);
+      clearTextImageButton.hidden = !CFG.image;
+      clearTextImageButton.disabled = Boolean(textImageUploadController);
+      inputs.text.inp.disabled = Boolean(CFG.image);
+    }
+    syncTextImageControls();
     function syncBorderControls() {
       const disabled = CFG.borderMode === "none";
       for (const k of ["borderColor", "borderStyle", "borderWidth", "borderTopSpacing", "borderBottomSpacing", "borderRotation"]) {
@@ -1172,6 +1767,7 @@
       }
       clearPresetState();
       if (borderImageButton) borderImageButton.textContent = tr("Upload image");
+      syncTextImageControls();
       recordSettingsHistory(true);
       persistCurrentSettings();
       syncBorderControls();
@@ -1245,7 +1841,7 @@
     try { presets = JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {}; } catch (e) { persisted = false; }
     const has = n => Object.prototype.hasOwnProperty.call(presets, n);
     const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(presets)); persisted = true; } catch (e) { persisted = false; } };
-    const snapshot = () => ({ ...Object.fromEntries(UI.map(u => [u.k, CFG[u.k]])), borderImage: CFG.borderImage });
+    const snapshot = () => ({ ...Object.fromEntries(UI.map(u => [u.k, CFG[u.k]])), borderImage: CFG.borderImage, image: CFG.image });
     const settingsHistory = [snapshot()];
     const maxHistoryEntries = 100;
     let historyIndex = 0;
@@ -1253,7 +1849,7 @@
 
     function recordSettingsHistory(forceNewEntry = false) {
       const state = snapshot();
-      if (JSON.stringify(state) === JSON.stringify(settingsHistory[historyIndex])) return;
+      if (Object.keys(state).every(key => Object.is(state[key], settingsHistory[historyIndex][key]))) return;
       if (forceNewEntry) {
         clearTimeout(historyGroupTimer);
         historyGroupTimer = 0;
@@ -1316,12 +1912,17 @@
         && (!obj.borderImage || /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.borderImage))) {
         CFG.borderImage = obj.borderImage;
       }
+      if (typeof obj.image === "string"
+        && (!obj.image || /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.image))) {
+        CFG.image = obj.image;
+      }
+      syncTextImageControls();
       syncBorderControls();
       updateSceneSettings();
       scheduleFrame();
-      rebuild();
+      const rebuildComplete = rebuild();
       if (recordHistory) recordSettingsHistory(true);
-      persistCurrentSettings();
+      return rebuildComplete.then(() => scheduleSettingsPersistence());
     }
 
     const pr = document.createElement("div"); pr.className = "presets";
@@ -1349,8 +1950,11 @@
       if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dlg.close();
     });
     const status = document.createElement("div"); status.className = "status"; status.setAttribute("role", "status");
-    const say = s => { status.textContent = tr(s); };
-    if (lastSettingsLoadFailed) say("Could not load previous settings");
+    const say = (s, kind = "info") => {
+      status.textContent = tr(s);
+      status.dataset.kind = kind;
+    };
+    if (lastSettingsLoadFailed) say("Could not load previous settings", "error");
     let settingsSaveTimer = 0;
     function persistCurrentSettings() {
       clearTimeout(settingsSaveTimer);
@@ -1358,7 +1962,7 @@
       try {
         localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(snapshot()));
       } catch (e) {
-        say("Could not save current settings");
+        say("Could not save current settings", "error");
       }
     }
     function scheduleSettingsPersistence() {
@@ -1371,12 +1975,17 @@
       loadedPresetSettings = null;
       sel.value = "";
       status.textContent = "";
+      delete status.dataset.kind;
     }
     function updatePresetState() {
       if (!loadedPresetName || !loadedPresetSettings) return;
-      const matches = UI.every(u => CFG[u.k] === loadedPresetSettings[u.k]);
+      const matches = UI.every(u => CFG[u.k] === loadedPresetSettings[u.k])
+        && CFG.image === (loadedPresetSettings.image || "");
       sel.value = matches ? loadedPresetName : "";
-      if (!matches) status.textContent = "";
+      if (!matches) {
+        status.textContent = "";
+        delete status.dataset.kind;
+      }
     }
     const mk = (label, fn) => { const b = document.createElement("button"); b.type = "button"; b.textContent = tr(label); b.onclick = fn; return b; };
     const row = (...els) => { const d = document.createElement("div"); d.className = "prow"; d.append(...els); return d; };
@@ -1384,28 +1993,36 @@
     jsonFile.type = "file";
     jsonFile.accept = ".json,application/json";
     jsonFile.hidden = true;
+    const jsonLoadProgress = createFileLoadProgress();
+    let jsonLoadController = null;
     jsonFile.addEventListener("change", async () => {
       const file = jsonFile.files?.[0];
-      if (!file) return;
+      if (!file || jsonLoadController) return;
+      jsonLoadController = new AbortController();
+      jsonLoadProgress.start(jsonLoadController, "Reading settings file", "Processing settings file");
       try {
-        let parsed;
-        try {
-          parsed = JSON.parse(await file.text());
-        } catch {
-          say("Invalid settings JSON");
-          return;
+        const imported = await readSettingsFile(file, jsonLoadController.signal,
+          (phase, loaded, total) => jsonLoadProgress.update(phase, loaded, total));
+        const { settings, imageBlob, imageBitmap } = imported;
+        if (settings.image && imageBlob) {
+          const image = imageBitmap || await decodeImageBlob(imageBlob);
+          cacheDecodedImageBlob(settings.image, imageBlob, image);
         }
-        const settings = validateSettings(parsed);
-        if (!settings) {
-          say("Invalid settings JSON");
-          return;
-        }
-        applySettings(settings);
+        await applySettings(settings);
         clearPresetState();
-        say("Settings imported");
-      } catch {
-        say("Could not read settings file");
+        say("Settings imported", "success");
+      } catch (error) {
+        if (error.name === "AbortError") {
+          say("Settings import canceled");
+        } else if (error.message === "Invalid settings JSON") {
+          say("Invalid settings JSON", "error");
+        } else {
+          console.error("Settings import failed", error);
+          say("Could not read settings file", "error");
+        }
       } finally {
+        jsonLoadProgress.finish();
+        jsonLoadController = null;
         jsonFile.value = "";
       }
     });
@@ -1417,7 +2034,7 @@
       link.download = "cylinder-text-settings.json";
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      say("Settings exported");
+      say("Settings exported", "success");
     });
 
     function writeUint24(view, offset, value) {
@@ -1637,38 +2254,83 @@
         }
       }
 
-      let renderedCharacters = 0;
-      for (let r = 0; r < rows.length; r++) {
-        const row = rows[r];
-        const direction = settings.alternate && r % 2 ? -1 : 1;
-        for (const character of row.chars) {
-          const angle = character.a + direction * frameSpin + row.phase;
-          if (!settings.backVisible && Math.cos(angle) * cosX <= 0) continue;
-          const x = R * Math.sin(angle), z = R * Math.cos(angle);
-          const point3d = { x, y: row.y, z };
-          const projected = project(x, row.y, z);
-          const depth = Math.max(0, Math.min(1, (projected.z / R + 1) / 2));
-          const depthScale = 1 - settings.depthScale * (1 - depth);
-          const opacity = settings.minOpacity + (1 - settings.minOpacity) * Math.pow(depth, settings.fade);
-          const cos = Math.cos(angle), sin = Math.sin(angle);
-          const horizontalDirection = settings.mirrorFront ? -1 : 1;
-          const horizontal = projectAxis(point3d, { x: horizontalDirection * cos, y: 0, z: -horizontalDirection * sin });
-          const vertical = projectAxis(point3d, { x: 0, y: 1, z: 0 });
-          context.save();
-          context.globalAlpha = opacity;
-          context.setTransform(horizontal.x * depthScale, horizontal.y * depthScale,
-            vertical.x * depthScale, vertical.y * depthScale, projected.x, projected.y);
-          if (settings.strokeWidth > 0) {
-            context.strokeStyle = settings.strokeColor;
-            context.lineWidth = settings.strokeWidth / depthScale;
-            context.strokeText(character.text === " " ? "\u00a0" : character.text, 0, 0);
+      if (settings.image) {
+        const image = await decodeImageSource(settings.image);
+        const imageSize = getImageDisplaySize(settings, image);
+        const segmentCount = getImageSegmentCount(imageSize);
+        let renderedSegments = 0;
+        for (let copy = 0; copy < imageSize.count; copy++) {
+          const copyOffset = (copy - (imageSize.count - 1) / 2) * imageSize.width;
+          for (let i = 0; i < segmentCount; i++) {
+            const x0 = imageSize.width * i / segmentCount;
+            const x1 = imageSize.width * (i + 1) / segmentCount;
+            const worldX0 = copyOffset + x0 - imageSize.width / 2;
+            const worldX1 = copyOffset + x1 - imageSize.width / 2;
+            const angle0 = frameSpin + worldX0 / R;
+            const angle1 = frameSpin + worldX1 / R;
+            const angle = (angle0 + angle1) / 2;
+            const depth = Math.max(0, Math.min(1, (Math.cos(angle) * cosX + 1) / 2));
+            const scale = 1 - settings.depthScale * (1 - depth);
+            const halfHeight = imageSize.height * scale / 2;
+            if (!settings.backVisible && Math.cos(angle) * cosX <= 0) continue;
+            const projected = project(R * Math.sin(angle), 0, R * Math.cos(angle));
+            context.save();
+            context.globalAlpha = settings.minOpacity + (1 - settings.minOpacity) * Math.pow(depth, settings.fade);
+            const topLeft = project(R * Math.sin(angle0), -halfHeight, R * Math.cos(angle0));
+            const topRight = project(R * Math.sin(angle1), -halfHeight, R * Math.cos(angle1));
+            const bottomLeft = project(R * Math.sin(angle0), halfHeight, R * Math.cos(angle0));
+            const bottomRight = project(R * Math.sin(angle1), halfHeight, R * Math.cos(angle1));
+            const imageWidth = image.width || image.naturalWidth;
+            const imageHeight = image.height || image.naturalHeight;
+            const sourceLeft = { x: x0 / imageSize.width * imageWidth, y: 0 };
+            const sourceRight = { x: x1 / imageSize.width * imageWidth, y: 0 };
+            const sourceBottomLeft = { x: sourceLeft.x, y: imageHeight };
+            const sourceBottomRight = { x: sourceRight.x, y: imageHeight };
+            drawImageTriangle(context, image, [sourceLeft, sourceRight, sourceBottomLeft],
+              [topLeft, topRight, bottomLeft]);
+            drawImageTriangle(context, image, [sourceRight, sourceBottomRight, sourceBottomLeft],
+              [topRight, bottomRight, bottomLeft]);
+            context.restore();
+            if (++renderedSegments % 48 === 0) {
+              await yieldToBrowser();
+              checkCanceled();
+            }
           }
-          context.fillStyle = settings.textColor;
-          context.fillText(character.text === " " ? "\u00a0" : character.text, 0, 0);
-          context.restore();
-          if (++renderedCharacters % 8 === 0) {
-            await yieldToBrowser();
-            checkCanceled();
+        }
+      } else {
+        let renderedCharacters = 0;
+        for (let r = 0; r < rows.length; r++) {
+          const row = rows[r];
+          const direction = settings.alternate && r % 2 ? -1 : 1;
+          for (const character of row.chars) {
+            const angle = character.a + direction * frameSpin + row.phase;
+            if (!settings.backVisible && Math.cos(angle) * cosX <= 0) continue;
+            const x = R * Math.sin(angle), z = R * Math.cos(angle);
+            const point3d = { x, y: row.y, z };
+            const projected = project(x, row.y, z);
+            const depth = Math.max(0, Math.min(1, (projected.z / R + 1) / 2));
+            const depthScale = 1 - settings.depthScale * (1 - depth);
+            const opacity = settings.minOpacity + (1 - settings.minOpacity) * Math.pow(depth, settings.fade);
+            const cos = Math.cos(angle), sin = Math.sin(angle);
+            const horizontalDirection = settings.mirrorFront ? -1 : 1;
+            const horizontal = projectAxis(point3d, { x: horizontalDirection * cos, y: 0, z: -horizontalDirection * sin });
+            const vertical = projectAxis(point3d, { x: 0, y: 1, z: 0 });
+            context.save();
+            context.globalAlpha = opacity;
+            context.setTransform(horizontal.x * depthScale, horizontal.y * depthScale,
+              vertical.x * depthScale, vertical.y * depthScale, projected.x, projected.y);
+            if (settings.strokeWidth > 0) {
+              context.strokeStyle = settings.strokeColor;
+              context.lineWidth = settings.strokeWidth / depthScale;
+              context.strokeText(character.text === " " ? "\u00a0" : character.text, 0, 0);
+            }
+            context.fillStyle = settings.textColor;
+            context.fillText(character.text === " " ? "\u00a0" : character.text, 0, 0);
+            context.restore();
+            if (++renderedCharacters % 8 === 0) {
+              await yieldToBrowser();
+              checkCanceled();
+            }
           }
         }
       }
@@ -1686,12 +2348,12 @@
       const maxDimension = 1920;
       const exportSettings = { ...CFG };
       if (!exportSettings.speed) {
-        say("Set a non-zero rotation speed to export");
+        say("Set a non-zero rotation speed to export", "error");
         return;
       }
       const period = 360 / Math.abs(exportSettings.speed);
       if (period > maxDuration) {
-        say("The animation is too long to export at this speed");
+        say("The animation is too long to export at this speed", "error");
         return;
       }
       const periodMs = period * 1000;
@@ -1705,7 +2367,7 @@
       const exportBorders = [...new Map(borderData.map(({ y, row }) => [`${y}:${row}`, { y, row }])).values()];
       const { width: availableWidth, height: availableHeight } = scene.getBoundingClientRect();
       if (!HTMLCanvasElement.prototype.toBlob) {
-        say("Animated WebP export is not supported by this browser");
+        say("Animated WebP export is not supported by this browser", "error");
         return;
       }
 
@@ -1713,6 +2375,7 @@
       exportController = controller;
       exportWebp.textContent = tr("Cancel export");
       exportWebp.style.setProperty("--export-progress", 0);
+      status.dataset.kind = "info";
       status.textContent = `${tr("Exporting animated WebP")} (0/${frameCount})`;
       const checkCanceled = () => {
         if (controller.signal.aborted) {
@@ -1729,6 +2392,8 @@
           await document.fonts.load(spec, exportSettings.text + exportSettings.separator);
           checkCanceled();
         }
+        if (exportSettings.image) await decodeImageSource(exportSettings.image);
+        checkCanceled();
         const pixelScale = Math.min(2, maxDimension / Math.max(availableWidth, availableHeight));
         const { width: sceneWidth, height: sceneHeight, scale: sceneScale } =
           getSceneLayout(exportSettings, availableWidth, availableHeight);
@@ -1751,7 +2416,7 @@
           });
           checkCanceled();
           if (blob.type !== "image/webp") {
-            say("Animated WebP export is not supported by this browser");
+            say("Animated WebP export is not supported by this browser", "error");
             return;
           }
           frames.push(getWebpFrameChunks(await blob.arrayBuffer()));
@@ -1768,13 +2433,13 @@
         link.download = "cylinder-text-animation.webp";
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        say("Animated WebP exported");
+        say("Animated WebP exported", "success");
       } catch (error) {
         if (controller.signal.aborted) {
           say("Animated WebP export canceled");
         } else {
           console.error("Animated WebP export failed", error);
-          say("Could not export animated WebP");
+          say("Could not export animated WebP", "error");
         }
       } finally {
         exportController = null;
@@ -1803,13 +2468,13 @@
       applySettings(presets[sel.value]);
       loadedPresetName = sel.value;
       loadedPresetSettings = snapshot();
-      say("Loaded preset");
+      say("Loaded preset", "success");
     };
     const commitSave = n => {
       presets[n] = snapshot(); persist(); renderSel(n);
       loadedPresetName = n;
       loadedPresetSettings = snapshot();
-      say(persisted ? "Saved" : "This browser cannot save presets");
+      say(persisted ? "Saved" : "This browser cannot save presets", persisted ? "success" : "error");
     };
     const openSave = () => {   // Pre-fill the loaded preset name for quick overwrites.
       nameInp.value = has(sel.value) ? sel.value : has(loadedPresetName) ? loadedPresetName : "";
@@ -1818,8 +2483,9 @@
     };
     renderSel();
     pr.append(
-      row(sel, mk("Save", openSave), mk("Delete", () => { if (!has(sel.value)) return; delete presets[sel.value]; persist(); clearPresetState(); renderSel(); say("Deleted"); })),
+      row(sel, mk("Save", openSave), mk("Delete", () => { if (!has(sel.value)) return; delete presets[sel.value]; persist(); clearPresetState(); renderSel(); say("Deleted", "success"); })),
       jsonActions,
+      jsonLoadProgress.row,
       webpActions,
       status
     );
