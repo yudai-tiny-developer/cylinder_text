@@ -1950,13 +1950,18 @@
       const tiltX = settings.tiltX * Math.PI / 180;
       const cosX = Math.cos(tiltX), sinX = Math.sin(tiltX);
       const cosZ = Math.cos(tiltZ), sinZ = Math.sin(tiltZ);
-      const borderImageHalfHeight = settings.borderMode !== "none" && settings.borderStyle === "image" && decodedBorderImage
-        ? getBorderImageDisplaySize(settings, decodedBorderImage).height / 2 : 0;
-      const borderExtra = settings.borderMode === "none" ? 0
-        : Math.max(settings.borderTopSpacing, settings.borderBottomSpacing) + borderImageHalfHeight;
+      const bordersEnabled = settings.borderMode !== "none" && settings.borderWidth > 0;
+      const borderHalfHeight = !bordersEnabled ? 0
+        : settings.borderStyle === "image" && settings.borderImage && decodedBorderImage
+          ? getBorderImageDisplaySize(settings, decodedBorderImage).height / 2
+          : settings.borderWidth * (settings.borderStyle === "double" ? 1.25 : 0.5);
+      const hasTopBorder = bordersEnabled && !["allBottom", "rowsBottom"].includes(settings.borderMode);
+      const hasBottomBorder = bordersEnabled && !["allTop", "rowsTop"].includes(settings.borderMode);
       const projectedRadius = R;
-      const top = -rowSpan / 2 - rowHalfHeight - borderExtra;
-      const bottom = rowSpan / 2 + rowHalfHeight + borderExtra;
+      const top = -rowSpan / 2 - rowHalfHeight
+        - (hasTopBorder ? settings.borderTopSpacing + borderHalfHeight : 0);
+      const bottom = rowSpan / 2 + rowHalfHeight
+        + (hasBottomBorder ? settings.borderBottomSpacing + borderHalfHeight : 0);
       let minY = Infinity, maxY = -Infinity;
       for (const y of [top, bottom]) {
         for (let i = 0; i < 1440; i++) {
