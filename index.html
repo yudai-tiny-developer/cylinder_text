@@ -753,18 +753,8 @@
       { k: "paused", label: "Pause", category: "Motion and display", type: "bool" }
     ];
 
-    function migrateLegacySettings(obj) {
-      if (!obj || typeof obj !== "object" || Array.isArray(obj) || !Object.prototype.hasOwnProperty.call(obj, "borderSpacing")) return obj;
-      const settings = { ...obj };
-      if (!Object.prototype.hasOwnProperty.call(settings, "borderTopSpacing")) settings.borderTopSpacing = settings.borderSpacing;
-      if (!Object.prototype.hasOwnProperty.call(settings, "borderBottomSpacing")) settings.borderBottomSpacing = settings.borderSpacing;
-      delete settings.borderSpacing;
-      return settings;
-    }
-
     function validateSettings(obj) {
       if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
-      obj = migrateLegacySettings(obj);
       const settings = {};
       for (const u of UI) {
         if (!Object.prototype.hasOwnProperty.call(obj, u.k)) continue;
@@ -1003,11 +993,6 @@
               return;
             }
             const own = (key) => Object.prototype.hasOwnProperty.call(obj, key);
-            if (own("borderSpacing")) {
-              if (!own("borderTopSpacing")) obj.borderTopSpacing = obj.borderSpacing;
-              if (!own("borderBottomSpacing")) obj.borderBottomSpacing = obj.borderSpacing;
-              delete obj.borderSpacing;
-            }
             const settings = {};
             for (const field of schema) {
               if (!own(field.key)) continue;
@@ -1897,7 +1882,6 @@
     });
 
     function applySettings(obj, recordHistory = true) {
-      obj = migrateLegacySettings(obj);
       for (const u of UI) {
         let v = obj[u.k];
         const t = u.type === "bool" ? "boolean" : ["text", "color", "select"].includes(u.type) ? "string" : "number";
