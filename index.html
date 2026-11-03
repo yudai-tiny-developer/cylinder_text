@@ -2276,13 +2276,22 @@
       clearTextImageButton.hidden = !CFG.image;
       clearTextImageButton.disabled = Boolean(textImageUploadController);
       inputs.text.inp.disabled = Boolean(CFG.image);
+      for (const k of ["alternate", "separator", "fontFamily", "fontWeight", "strokeWidth", "letterSpacing", "rowGap", "mirrorFront", "textColor", "strokeColor"]) {
+        const { inp, out, wrap } = inputs[k];
+        const fieldDisabled = Boolean(CFG.image);
+        inp.disabled = fieldDisabled;
+        if (out) out.disabled = fieldDisabled;
+        wrap.classList.toggle("disabled", fieldDisabled);
+      }
     }
     syncTextImageControls();
     function syncBorderControls() {
       const disabled = CFG.borderMode === "none";
       for (const k of ["borderColor", "borderStyle", "borderWidth", "borderTopSpacing", "borderBottomSpacing", "borderRotation"]) {
         const { inp, out, wrap } = inputs[k];
-        const fieldDisabled = disabled || (k === "borderWidth" && CFG.borderStyle === "image");
+        const fieldDisabled = disabled
+          || (k === "borderColor" && CFG.borderStyle === "image")
+          || (k === "borderWidth" && CFG.borderStyle === "image");
         inp.disabled = fieldDisabled;
         if (out) out.disabled = fieldDisabled;
         wrap.classList.toggle("disabled", fieldDisabled);
