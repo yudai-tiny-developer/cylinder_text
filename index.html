@@ -823,7 +823,7 @@
     /* Use Japanese when the browser's preferred language is Japanese; otherwise use English. */
     const JA = /^ja/i.test(navigator.languages?.[0] || navigator.language || "en");
     const JA_TRANSLATIONS = {
-      "Settings": "設定", "Privacy Policy": "プライバシーポリシー", "Terms of Use": "利用規約",
+      "Settings": "詳細設定", "Privacy Policy": "プライバシーポリシー", "Terms of Use": "利用規約",
       "For the smooth WebGL renderer, enable hardware acceleration in your browser settings.": "滑らかなWebGL描画のため、ブラウザーのグラフィックアクセラレーションを有効にしてください。",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Clear image": "画像をクリア",
@@ -2836,7 +2836,6 @@
     btns.appendChild(reset); fields.appendChild(btns);
     fields.appendChild($("policy-links"));
 
-    if (innerWidth > 700) panelEl.open = true;
     const textDock = $("text-dock");
     const syncTextFieldLocation = () => {
       if (panelEl.open) {
