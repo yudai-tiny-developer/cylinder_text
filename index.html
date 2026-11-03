@@ -161,10 +161,6 @@
       background-size: 100% 100%;
     }
 
-    .hide-back .ch {
-      backface-visibility: hidden;
-    }
-
     .f.disabled {
       opacity: .45;
     }
@@ -714,7 +710,6 @@
       depthScale: 0.2,        // Additional size reduction for distant text (0-0.9).
       minOpacity: 0.12,       // Opacity at the farthest point.
       fade: 1.5,              // Fade curve toward the back; larger values fade faster.
-      backVisible: true,      // Show the back of the cylinder (mirrored text).
       mirrorFront: false,     // Mirror text on the front side and un-mirror the back side.
       image: "",
       paused: false
@@ -732,7 +727,6 @@
       { k: "strokeWidth", label: "Outline width", category: "Text appearance", min: 0, max: 8, step: 0.5, rebuild: true },
       { k: "letterSpacing", label: "Letter spacing", category: "Text appearance", min: 0, max: 1, step: 0.01, rebuild: true },
       { k: "rowGap", label: "Row gap", category: "Text appearance", min: 0.8, max: 3, step: 0.05, rebuild: true },
-      { k: "backVisible", label: "Show back side", category: "Text appearance", type: "bool" },
       { k: "mirrorFront", label: "Mirror front side", category: "Text appearance", type: "bool", rebuild: true },
       { k: "repeat", label: "Repeat", category: "Text appearance", type: "bool", rebuild: true },
       {
@@ -843,7 +837,7 @@
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
       "Row gap": "行の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "行ごとに逆回転",
-      "Show back side": "裏側を表示", "Mirror front side": "鏡文字にする", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
+      "Mirror front side": "鏡文字にする", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
       "Load installed fonts": "インストール済みフォントを読込", "Loaded": "読み込み済み",
       "Couldn't access installed fonts": "フォント一覧を取得できませんでした",
       "Hold for 1 second to reset": "1秒間押し続けて離すと初期値に戻します",
@@ -1254,7 +1248,6 @@
         uniform float uRowY;
         varying vec2 vTexCoord;
         varying vec2 vObjectTexCoord;
-        varying float vFacing;
         varying float vOpacity;
         float sizeAt(float angle) {
           float z = -uRowY * sin(uTiltX) + uRadius * cos(angle) * cos(uTiltX);
@@ -1293,7 +1286,6 @@
           float normalizedDepth = clamp((rotatedZ / uRadius + 1.0) * 0.5, 0.0, 1.0);
           vTexCoord = vec2(sourceU, aTexCoord.y);
           vObjectTexCoord = aTexCoord;
-          vFacing = cos(worldAngle);
           vOpacity = pow(normalizedDepth, 1.0);
         }
       `;
@@ -1308,14 +1300,11 @@
         uniform float uFade;
         uniform float uDepthScale;
         uniform float uFadeEnabled;
-        uniform float uBackVisible;
         uniform vec4 uBorderColor;
         varying vec2 vTexCoord;
         varying vec2 vObjectTexCoord;
-        varying float vFacing;
         varying float vOpacity;
         void main() {
-          if (uBackVisible < 0.5 && vFacing <= 0.0) discard;
           float depth = clamp(vOpacity, 0.0, 1.0);
           float alpha = uFadeEnabled > 0.5
             ? uMinOpacity + (1.0 - uMinOpacity) * pow(depth, uFade)
@@ -1371,7 +1360,7 @@
         "uViewport", "uOutputScale", "uOffsetY", "uPerspective", "uFar", "uRadius", "uTiltX", "uTiltZ",
         "uRotation", "uDepthScale", "uWarpAverage", "uRowY", "uContentTexture", "uBorderTexture",
         "uWarpBaseline", "uLayer", "uPattern", "uPatternScale", "uMinOpacity", "uFade", "uFadeEnabled",
-        "uBackVisible", "uBorderColor"
+        "uBorderColor"
       ].map(name => [name, gl.getUniformLocation(program, name)]));
       const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
       let renderScene = null;
@@ -1476,7 +1465,6 @@
           gl.uniform1f(uniforms.uDepthScale, settings.depthScale);
           gl.uniform1f(uniforms.uMinOpacity, settings.minOpacity);
           gl.uniform1f(uniforms.uFade, settings.fade);
-          gl.uniform1f(uniforms.uBackVisible, settings.backVisible ? 1 : 0);
           gl.uniform1i(uniforms.uContentTexture, 0);
           gl.uniform1i(uniforms.uBorderTexture, 1);
           gl.activeTexture(gl.TEXTURE0);
@@ -1996,7 +1984,6 @@
       const offsetY = -sceneLayout.offsetY;
       stage.style.transform = offsetY ? `translateY(${offsetY}px)` : "";
       ring.style.transform = `rotateZ(${CFG.tiltZ}deg) rotateX(${-CFG.tiltX}deg)`;
-      document.body.classList.toggle("hide-back", !CFG.backVisible);
       document.body.style.background = CFG.bgColor;
       ring.style.setProperty("--tc", CFG.textColor);
       ring.style.setProperty("--sc", CFG.strokeColor);
@@ -2815,30 +2802,28 @@
           const scale = 1 - settings.depthScale * (1 - depth);
           const halfWidth = imageSize.width * scale / 2;
           const halfHeight = imageSize.height * scale / 2;
-          if (settings.backVisible || Math.cos(angle) * cosX > 0) {
-            const point = (x, y) => project(
-              R * Math.sin(angle) + x * Math.cos(angle),
-              y,
-              R * Math.cos(angle) - x * Math.sin(angle)
-            );
-            const topLeft = point(-halfWidth, -halfHeight);
-            const topRight = point(halfWidth, -halfHeight);
-            const bottomLeft = point(-halfWidth, halfHeight);
-            const bottomRight = point(halfWidth, halfHeight);
-            const imageWidth = image.width || image.naturalWidth;
-            const imageHeight = image.height || image.naturalHeight;
-            const sourceTopLeft = { x: 0, y: 0 };
-            const sourceTopRight = { x: imageWidth, y: 0 };
-            const sourceBottomLeft = { x: 0, y: imageHeight };
-            const sourceBottomRight = { x: imageWidth, y: imageHeight };
-            context.save();
-            context.globalAlpha = settings.minOpacity + (1 - settings.minOpacity) * Math.pow(depth, settings.fade);
-            drawImageTriangle(context, image, [sourceTopLeft, sourceTopRight, sourceBottomLeft],
-              [topLeft, topRight, bottomLeft]);
-            drawImageTriangle(context, image, [sourceTopRight, sourceBottomRight, sourceBottomLeft],
-              [topRight, bottomRight, bottomLeft]);
-            context.restore();
-          }
+          const point = (x, y) => project(
+            R * Math.sin(angle) + x * Math.cos(angle),
+            y,
+            R * Math.cos(angle) - x * Math.sin(angle)
+          );
+          const topLeft = point(-halfWidth, -halfHeight);
+          const topRight = point(halfWidth, -halfHeight);
+          const bottomLeft = point(-halfWidth, halfHeight);
+          const bottomRight = point(halfWidth, halfHeight);
+          const imageWidth = image.width || image.naturalWidth;
+          const imageHeight = image.height || image.naturalHeight;
+          const sourceTopLeft = { x: 0, y: 0 };
+          const sourceTopRight = { x: imageWidth, y: 0 };
+          const sourceBottomLeft = { x: 0, y: imageHeight };
+          const sourceBottomRight = { x: imageWidth, y: imageHeight };
+          context.save();
+          context.globalAlpha = settings.minOpacity + (1 - settings.minOpacity) * Math.pow(depth, settings.fade);
+          drawImageTriangle(context, image, [sourceTopLeft, sourceTopRight, sourceBottomLeft],
+            [topLeft, topRight, bottomLeft]);
+          drawImageTriangle(context, image, [sourceTopRight, sourceBottomRight, sourceBottomLeft],
+            [topRight, bottomRight, bottomLeft]);
+          context.restore();
           await yieldToBrowser();
           checkCanceled();
         }
@@ -2849,7 +2834,6 @@
           const direction = settings.alternate && r % 2 ? -1 : 1;
           for (const character of row.chars) {
             const angle = character.a + direction * frameSpin + row.phase;
-            if (!settings.backVisible && Math.cos(angle) * cosX <= 0) continue;
             const x = R * Math.sin(angle), z = R * Math.cos(angle);
             const point3d = { x, y: row.y, z };
             const projected = project(x, row.y, z);
