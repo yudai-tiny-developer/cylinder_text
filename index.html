@@ -139,11 +139,6 @@
       padding: var(--sw, 0px);
     }
 
-    .text-field textarea:disabled {
-      opacity: .45;
-      cursor: not-allowed;
-    }
-
     .border {
       position: absolute;
       box-sizing: border-box;
@@ -159,10 +154,6 @@
       pointer-events: none;
       background-repeat: no-repeat;
       background-size: 100% 100%;
-    }
-
-    .f.disabled {
-      opacity: .45;
     }
 
     /* ===== Control panel ===== */
@@ -2270,18 +2261,20 @@
         decodedImageObjectUrl = "";
       }
       const label = tr(CFG.image ? "Change image" : "Upload image");
+      textImageButton.textContent = CFG.image ? label : "🖼️";
       textImageButton.title = label;
       textImageButton.setAttribute("aria-label", label);
       textImageButton.disabled = Boolean(textImageUploadController);
       clearTextImageButton.hidden = !CFG.image;
       clearTextImageButton.disabled = Boolean(textImageUploadController);
       inputs.text.inp.disabled = Boolean(CFG.image);
+      inputs.text.inp.hidden = Boolean(CFG.image);
       for (const k of ["alternate", "separator", "fontFamily", "fontWeight", "strokeWidth", "letterSpacing", "rowGap", "mirrorFront", "textColor", "strokeColor"]) {
         const { inp, out, wrap } = inputs[k];
         const fieldDisabled = Boolean(CFG.image);
         inp.disabled = fieldDisabled;
         if (out) out.disabled = fieldDisabled;
-        wrap.classList.toggle("disabled", fieldDisabled);
+        wrap.hidden = fieldDisabled;
       }
     }
     syncTextImageControls();
@@ -2294,7 +2287,7 @@
           || (k === "borderWidth" && CFG.borderStyle === "image");
         inp.disabled = fieldDisabled;
         if (out) out.disabled = fieldDisabled;
-        wrap.classList.toggle("disabled", fieldDisabled);
+        wrap.hidden = fieldDisabled;
       }
       if (borderImageButton) {
         borderImageButton.hidden = disabled || CFG.borderStyle !== "image";
