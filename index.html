@@ -1237,6 +1237,7 @@
         uniform float uOutputScale;
         uniform float uOffsetY;
         uniform float uPerspective;
+        uniform float uFocalLength;
         uniform float uFar;
         uniform float uRadius;
         uniform float uTiltX;
@@ -1277,7 +1278,7 @@
           float screenX = x * cos(uTiltZ) - rotatedY * sin(uTiltZ);
           float screenY = x * sin(uTiltZ) + rotatedY * cos(uTiltZ);
           float denominator = max(1.0, uPerspective - rotatedZ);
-          float perspectiveScale = uPerspective / denominator;
+          float perspectiveScale = uFocalLength / denominator;
           float px = uViewport.x * 0.5 + screenX * perspectiveScale * uOutputScale;
           float py = uViewport.y * 0.5 + (screenY * perspectiveScale + uOffsetY) * uOutputScale;
           float viewDistance = denominator;
@@ -1357,7 +1358,7 @@
         texCoord: gl.getAttribLocation(program, "aTexCoord")
       };
       const uniforms = Object.fromEntries([
-        "uViewport", "uOutputScale", "uOffsetY", "uPerspective", "uFar", "uRadius", "uTiltX", "uTiltZ",
+        "uViewport", "uOutputScale", "uOffsetY", "uPerspective", "uFocalLength", "uFar", "uRadius", "uTiltX", "uTiltZ",
         "uRotation", "uDepthScale", "uWarpAverage", "uRowY", "uContentTexture", "uBorderTexture",
         "uWarpBaseline", "uLayer", "uPattern", "uPatternScale", "uMinOpacity", "uFade", "uFadeEnabled",
         "uBorderColor"
@@ -1458,6 +1459,7 @@
           gl.uniform1f(uniforms.uOutputScale, outputScale);
           gl.uniform1f(uniforms.uOffsetY, offsetY);
           gl.uniform1f(uniforms.uPerspective, persp(settings));
+          gl.uniform1f(uniforms.uFocalLength, perspectiveFocalLength(settings));
           gl.uniform1f(uniforms.uFar, persp(settings) + settings.radius + renderScene.maxExtent + 100);
           gl.uniform1f(uniforms.uRadius, settings.radius);
           gl.uniform1f(uniforms.uTiltX, settings.tiltX * Math.PI / 180);
@@ -1920,18 +1922,27 @@
 
     // Keep the camera in front of the cylinder and its text.
     const persp = settings => Math.max(settings.perspective, settings.radius + settings.fontSize);
+    const perspectiveFocalLength = settings => {
+      const cameraDistance = persp(settings), radius = settings.radius;
+      const referenceDistance = DEFAULTS.perspective;
+      // Keep the projected horizontal radius constant while changing perspective.
+      return referenceDistance * Math.sqrt(cameraDistance ** 2 - radius ** 2)
+        / Math.sqrt(referenceDistance ** 2 - radius ** 2);
+    };
+    const perspectiveOutputScale = settings => perspectiveFocalLength(settings) / persp(settings);
 
     function getSceneLayout(settings, availableWidth, availableHeight) {
       const R = settings.radius, fs = settings.fontSize;
       const P = persp(settings);
-      const frontScale = P / (P - R);
+      const focalLength = perspectiveFocalLength(settings);
+      const referenceFrontScale = DEFAULTS.perspective / (DEFAULTS.perspective - R);
       const strokePadding = settings.image ? 0 : settings.strokeWidth;
-      const widthAtZeroTilt = (2 * R + fs * 2 + strokePadding * 2) * frontScale + 40;
+      const widthAtZeroTilt = (2 * R + fs * 2 + strokePadding * 2) * referenceFrontScale + 40;
       const imageSize = getImageDisplaySize(settings);
       const rowSpan = settings.image ? 0 : Math.max(0, settings.text.split("\n").length - 1) * fs * settings.rowGap;
       const rowHalfHeight = imageSize ? imageSize.height / 2 : fs / 2 + strokePadding;
       const heightAtZeroTilt = (rowSpan + 2 * R * Math.abs(Math.sin(settings.tiltX * Math.PI / 180))
-        + rowHalfHeight * 2) * frontScale + 40;
+        + rowHalfHeight * 2) * referenceFrontScale + 40;
       const tiltZ = settings.tiltZ * Math.PI / 180;
       const width = widthAtZeroTilt * Math.abs(Math.cos(tiltZ)) + heightAtZeroTilt * Math.abs(Math.sin(tiltZ));
       const height = widthAtZeroTilt * Math.abs(Math.sin(tiltZ)) + heightAtZeroTilt * Math.abs(Math.cos(tiltZ));
@@ -1957,7 +1968,7 @@
           const x = projectedRadius * Math.sin(angle), z = projectedRadius * Math.cos(angle);
           const rotatedY = y * cosX + z * sinX;
           const rotatedZ = -y * sinX + z * cosX;
-          const projectedY = P * (x * sinZ + rotatedY * cosZ) / (P - rotatedZ);
+          const projectedY = focalLength * (x * sinZ + rotatedY * cosZ) / Math.max(1, P - rotatedZ);
           minY = Math.min(minY, projectedY);
           maxY = Math.max(maxY, projectedY);
         }
@@ -1982,7 +1993,7 @@
       const sceneBounds = scene.getBoundingClientRect();
       sceneLayout = getSceneLayout(CFG, sceneBounds.width, sceneBounds.height);
       const offsetY = -sceneLayout.offsetY;
-      stage.style.transform = offsetY ? `translateY(${offsetY}px)` : "";
+      stage.style.transform = `scale(${perspectiveOutputScale(CFG)}) translateY(${offsetY}px)`;
       ring.style.transform = `rotateZ(${CFG.tiltZ}deg) rotateX(${-CFG.tiltX}deg)`;
       document.body.style.background = CFG.bgColor;
       ring.style.setProperty("--tc", CFG.textColor);

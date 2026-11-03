@@ -62,7 +62,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Rotation speed | Rotation in degrees per second. Negative values reverse direction. |
 | Tilt (front/back) | Tilts the cylinder toward or away from the viewer. |
 | Tilt (side) | Tilts the cylinder horizontally. |
-| Perspective | Perspective distance; lower values make depth effects stronger. |
+| Perspective | Perspective distance; lower values make depth effects stronger without changing the cylinder's apparent radius. |
 | Shrink distant text | Reduces the size of characters on the far side. |
 | Distant opacity | Minimum opacity for characters on the far side. |
 | Radius | Cylinder radius in pixels. |
