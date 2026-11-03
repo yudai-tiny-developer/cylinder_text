@@ -1435,11 +1435,11 @@
       const tiltX = settings.tiltX * Math.PI / 180;
       const cosX = Math.cos(tiltX), sinX = Math.sin(tiltX);
       const cosZ = Math.cos(tiltZ), sinZ = Math.sin(tiltZ);
-      const borderHalfHeight = settings.borderStyle === "image" && decodedBorderImage
-        ? getBorderImageDisplaySize(settings, decodedBorderImage).height / 2 : settings.borderWidth / 2;
+      const borderImageHalfHeight = settings.borderMode !== "none" && settings.borderStyle === "image" && decodedBorderImage
+        ? getBorderImageDisplaySize(settings, decodedBorderImage).height / 2 : 0;
       const borderExtra = settings.borderMode === "none" ? 0
-        : Math.max(settings.borderTopSpacing, settings.borderBottomSpacing) + borderHalfHeight;
-      const projectedRadius = R + rowHalfHeight + (settings.borderMode === "none" ? 0 : borderHalfHeight);
+        : Math.max(settings.borderTopSpacing, settings.borderBottomSpacing) + borderImageHalfHeight;
+      const projectedRadius = R;
       const top = -rowSpan / 2 - rowHalfHeight - borderExtra;
       const bottom = rowSpan / 2 + rowHalfHeight + borderExtra;
       let minY = Infinity, maxY = -Infinity;
