@@ -8,11 +8,11 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Multiple text rows with independent, alternating rotation
 - Adjustable font, weight, size, letter spacing, and row spacing
 - Text and outline colors, background color, and outline width
-- Optional top-only, bottom-only, or top-and-bottom borders around all rows or each individual row, with independently adjustable top and bottom spacing and customizable color, dotted, dashed, solid, double, or image styles
+- Optional top-only, bottom-only, or top-and-bottom borders around all rows or each individual row, with independently adjustable top and bottom spacing and customizable color, dotted, dashed, solid, double, or repeating image-panel styles
 - Optional border rotation synchronized with the text
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
-- Optional image upload in place of text, with adjustable image strip width
+- Optional image upload in place of text, displayed as a single panel on the cylinder
 - Optional mirrored/back-side text
 - Optional front-side mirroring with right-to-left text order and normally oriented back-side text
 - Pause/resume and reset-to-default controls
@@ -45,7 +45,6 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Setting | Description |
 | --- | --- |
 | Text | Text to display. Put each line on a separate row. Multiple lines share the same starting position. |
-| Image strip width | Sets the width of image strips in pixels when an image is uploaded. |
 | Separator | Text inserted between repeated units. |
 | Font | Font family name or comma-separated font stack. |
 | Weight | Font weight, from 100 to 900. |
@@ -55,7 +54,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Border color | Color of the border lines. |
 | Background | Stage background color. |
 | Border | Adds no border, a top-only, bottom-only, or top-and-bottom border around all rows or each row. |
-| Border style | Sets the border to dotted, dashed, solid, double, or an uploaded image. Image borders support PNG, JPEG, WebP, and GIF. |
+| Border style | Sets the border to dotted, dashed, solid, double, or repeated uploaded image panels that cover one full revolution. Image borders support PNG, JPEG, WebP, and GIF. |
 | Border width | Sets the border thickness from 0.5 to 96 pixels. |
 | Top spacing | Sets the gap between the text and the top border from 0 to 48 pixels. |
 | Bottom spacing | Sets the gap between the text and the bottom border from 0 to 48 pixels. |

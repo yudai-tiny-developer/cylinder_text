@@ -119,7 +119,7 @@
       backface-visibility: visible;
     }
 
-    .ch:not(.image-segment) {
+    .ch:not(.image) {
       padding: var(--sw, 0px);
     }
 
@@ -136,13 +136,13 @@
       pointer-events: none;
     }
 
-    .border-image-segment {
+    .border-image-panel {
       position: absolute;
       top: 0;
       left: 0;
-      height: var(--bw, 2px);
       pointer-events: none;
       background-repeat: no-repeat;
+      background-size: 100% 100%;
     }
 
     .hide-back .ch {
@@ -318,7 +318,7 @@
       cursor: pointer;
     }
 
-    .image-segment {
+    .image {
       background-repeat: no-repeat;
     }
 
@@ -700,7 +700,6 @@
       backVisible: true,      // Show the back of the cylinder (mirrored text).
       mirrorFront: false,     // Mirror text on the front side and un-mirror the back side.
       image: "",
-      imageStripWidth: 10,
       paused: false
     };
     const CFG = { ...DEFAULTS };
@@ -708,7 +707,6 @@
     /* UI definitions: rebuild=true marks settings that require rebuilding the text layout. */
     const UI = [
       { k: "text", label: "Text", category: "Text appearance", type: "text", multiline: true, rebuild: true },
-      { k: "imageStripWidth", label: "Image strip width", category: "Text appearance", min: 10, max: 1000, step: 1, rebuild: true },
       { k: "alternate", label: "Alternate direction per row", category: "Text appearance", type: "bool" },
       { k: "separator", label: "Separator", category: "Text appearance", type: "text", rebuild: true },
       { k: "fontFamily", label: "Font", category: "Text appearance", type: "text", list: FONT_PRESETS, rebuild: true },
@@ -817,7 +815,6 @@
       "Settings": "設定", "Privacy Policy": "プライバシーポリシー", "Terms of Use": "利用規約",
       "If the animation isn't smooth, check that hardware acceleration is enabled in your browser settings.": "アニメーションが滑らかでない場合は、ブラウザーのグラフィックアクセラレーションが有効かご確認ください。",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
-      "Image strip width": "画像短冊の幅",
       "Clear image": "画像をクリア",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
       "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top only (all rows)": "全体の上だけに枠", "Bottom only (all rows)": "全体の下だけに枠",
@@ -866,6 +863,7 @@
     document.documentElement.lang = JA ? "ja" : "en";
     const $ = id => document.getElementById(id);
     let decodedImageSource = "", decodedImagePromise = null, decodedImage = null, decodedImageObjectUrl = "";
+    let decodedBorderImageSource = "", decodedBorderImagePromise = null, decodedBorderImage = null;
     function cacheDecodedImageSource(src, image) {
       if (decodedImageObjectUrl) URL.revokeObjectURL(decodedImageObjectUrl);
       decodedImageSource = src;
@@ -905,6 +903,29 @@
         image.src = src;
       });
       return decodedImagePromise;
+    }
+
+    function decodeBorderImageSource(src) {
+      if (decodedBorderImageSource === src && decodedBorderImagePromise) return decodedBorderImagePromise;
+      decodedBorderImageSource = src;
+      decodedBorderImage = null;
+      decodedBorderImagePromise = new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          if (decodedBorderImageSource === src) decodedBorderImage = image;
+          resolve(image);
+        };
+        image.onerror = () => {
+          if (decodedBorderImageSource === src) {
+            decodedBorderImageSource = "";
+            decodedBorderImagePromise = null;
+            decodedBorderImage = null;
+          }
+          reject(new Error("Could not decode image"));
+        };
+        image.src = src;
+      });
+      return decodedBorderImagePromise;
     }
 
     function decodeImageBlob(blob) {
@@ -1181,8 +1202,6 @@
       return { width, height: width / aspectRatio, count };
     }
 
-    const getImageSegmentCount = (imageSize, stripWidth) => Math.max(1, Math.ceil(imageSize.width / stripWidth));
-
     $("panel").firstElementChild.textContent = tr("Settings");
     $("policy-link").textContent = tr("Privacy Policy");
     $("terms-link").textContent = tr("Terms of Use");
@@ -1262,6 +1281,10 @@
         }
         return true;
       };
+      const borderImage = settings.borderMode !== "none" && settings.borderStyle === "image" && settings.borderImage
+        ? await decodeBorderImageSource(settings.borderImage) : null;
+      if (request !== rebuildRequest) return;
+      const borderImageSize = borderImage ? getBorderImageDisplaySize(settings, borderImage) : null;
       if (settings.borderMode !== "none") {
         const rowHalfHeight = imageSize ? imageSize.height / 2 : fs / 2;
         const topOffset = rowHalfHeight + settings.borderTopSpacing;
@@ -1277,24 +1300,21 @@
           if (drawTop) positions.push([bound.top, bound.topRow]);
           if (drawBottom) positions.push([bound.bottom, bound.bottomRow]);
           for (const [y, row] of positions) {
-            if (settings.borderStyle === "image" && settings.borderImage) {
-              const segmentCount = 180;
-              const circumference = 2 * Math.PI * R;
-              for (let i = 0; i < segmentCount; i++) {
+            if (borderImageSize) {
+              const angleStep = Math.PI * 2 / borderImageSize.count;
+              for (let i = 0; i < borderImageSize.count; i++) {
                 if (request !== rebuildRequest) return;
                 const border = document.createElement("div");
-                border.className = "border-image-segment";
+                border.className = "border-image-panel";
                 border.setAttribute("aria-hidden", "true");
-                const segmentWidth = circumference / segmentCount;
-                border.style.left = -segmentWidth / 2 + "px";
-                border.style.top = -settings.borderWidth / 2 + "px";
-                border.style.width = segmentWidth + "px";
+                border.style.width = borderImageSize.width + "px";
+                border.style.height = borderImageSize.height + "px";
+                border.style.left = -borderImageSize.width / 2 + "px";
+                border.style.top = -borderImageSize.height / 2 + "px";
                 border.style.backgroundImage = `url("${settings.borderImage}")`;
-                border.style.backgroundSize = `${circumference}px ${settings.borderWidth}px`;
-                border.style.backgroundPosition = `${-i * circumference / segmentCount}px 0`;
                 const appended = appendInBatches(ring, border);
                 if (appended !== true && !await appended) return;
-                borderData.push({ el: border, y, row, angle: (i + 0.5) * Math.PI * 2 / segmentCount });
+                borderData.push({ el: border, y, row, angle: (i - (borderImageSize.count - 1) / 2) * angleStep });
               }
               continue;
             }
@@ -1314,28 +1334,20 @@
       }
 
       if (imageMode) {
-        const segmentCount = getImageSegmentCount(imageSize, settings.imageStripWidth);
-        const segmentWidth = imageSize.width / segmentCount;
         const chars = [];
         for (let copy = 0; copy < imageSize.count; copy++) {
           const copyOffset = (copy - (imageSize.count - 1) / 2) * imageSize.width;
-          for (let i = 0; i < segmentCount; i++) {
-            if (request !== rebuildRequest) return;
-            const el = document.createElement("div");
-            el.className = "ch image-segment";
-            el.setAttribute("aria-hidden", "true");
-            el.style.width = segmentWidth + "px";
-            el.style.height = imageSize.height + "px";
-            el.style.backgroundImage = `url("${getImageRenderSource(settings.image)}")`;
-            el.style.backgroundSize = `${imageSize.width}px ${imageSize.height}px`;
-            el.style.backgroundPosition = `${-i * segmentWidth}px 0`;
-            const appended = appendInBatches(ring, el);
-            if (appended !== true && !await appended) return;
-            chars.push({
-              el, image: true,
-              a: (copyOffset + (i + 0.5) * segmentWidth - imageSize.width / 2) / R
-            });
-          }
+          if (request !== rebuildRequest) return;
+          const el = document.createElement("div");
+          el.className = "ch image";
+          el.setAttribute("aria-hidden", "true");
+          el.style.width = imageSize.width + "px";
+          el.style.height = imageSize.height + "px";
+          el.style.backgroundImage = `url("${getImageRenderSource(settings.image)}")`;
+          el.style.backgroundSize = `${imageSize.width}px ${imageSize.height}px`;
+          const appended = appendInBatches(ring, el);
+          if (appended !== true && !await appended) return;
+          chars.push({ el, image: true, a: copyOffset / R });
         }
         rowsData.push({ y: 0, chars, phase: 0 });
       } else for (let r = 0; r < lines.length; r++) {
@@ -1423,9 +1435,11 @@
       const tiltX = settings.tiltX * Math.PI / 180;
       const cosX = Math.cos(tiltX), sinX = Math.sin(tiltX);
       const cosZ = Math.cos(tiltZ), sinZ = Math.sin(tiltZ);
+      const borderHalfHeight = settings.borderStyle === "image" && decodedBorderImage
+        ? getBorderImageDisplaySize(settings, decodedBorderImage).height / 2 : settings.borderWidth / 2;
       const borderExtra = settings.borderMode === "none" ? 0
-        : Math.max(settings.borderTopSpacing, settings.borderBottomSpacing) + settings.borderWidth / 2;
-      const projectedRadius = R + rowHalfHeight + (settings.borderMode === "none" ? 0 : settings.borderWidth / 2);
+        : Math.max(settings.borderTopSpacing, settings.borderBottomSpacing) + borderHalfHeight;
+      const projectedRadius = R + rowHalfHeight + (settings.borderMode === "none" ? 0 : borderHalfHeight);
       const top = -rowSpan / 2 - rowHalfHeight - borderExtra;
       const bottom = rowSpan / 2 + rowHalfHeight + borderExtra;
       let minY = Infinity, maxY = -Infinity;
@@ -1444,6 +1458,15 @@
         width, height, offsetY: (minY + maxY) / 2,
         scale: Math.min(1, availableWidth / width, availableHeight / height)
       };
+    }
+
+    function getBorderImageDisplaySize(settings, image) {
+      const imageWidth = image.width || image.naturalWidth;
+      const imageHeight = image.height || image.naturalHeight;
+      const circumference = 2 * Math.PI * settings.radius;
+      const count = Math.max(1, Math.round(circumference / imageWidth));
+      const width = circumference / count;
+      return { count, width, height: imageHeight };
     }
 
     function updateSceneSettings() {
@@ -1465,16 +1488,9 @@
         borderData.forEach(({ el, y, angle }) => {
           el.style.transform = angle === undefined
             ? `translateY(${y}px) rotateX(90deg)`
-            : `translateY(${y}px) rotateY(${angle + Math.PI}rad) translateZ(${CFG.radius}px)`;
+            : `translateY(${y}px) rotateY(${angle}rad) translateZ(${CFG.radius}px)`;
         });
       }
-      const circumference = 2 * Math.PI * CFG.radius;
-      borderData.forEach(({ el, angle }) => {
-        if (angle !== undefined) {
-          el.style.top = -CFG.borderWidth / 2 + "px";
-          el.style.backgroundSize = `${circumference}px ${CFG.borderWidth}px`;
-        }
-      });
       scheduleFrame();
     }
 
@@ -1734,19 +1750,16 @@
       clearTextImageButton.hidden = !CFG.image;
       clearTextImageButton.disabled = Boolean(textImageUploadController);
       inputs.text.inp.disabled = Boolean(CFG.image);
-      const { inp, out, wrap } = inputs.imageStripWidth;
-      wrap.hidden = !CFG.image;
-      inp.disabled = !CFG.image;
-      if (out) out.disabled = !CFG.image;
     }
     syncTextImageControls();
     function syncBorderControls() {
       const disabled = CFG.borderMode === "none";
       for (const k of ["borderColor", "borderStyle", "borderWidth", "borderTopSpacing", "borderBottomSpacing", "borderRotation"]) {
         const { inp, out, wrap } = inputs[k];
-        inp.disabled = disabled;
-        if (out) out.disabled = disabled;
-        wrap.classList.toggle("disabled", disabled);
+        const fieldDisabled = disabled || (k === "borderWidth" && CFG.borderStyle === "image");
+        inp.disabled = fieldDisabled;
+        if (out) out.disabled = fieldDisabled;
+        wrap.classList.toggle("disabled", fieldDisabled);
       }
       if (borderImageButton) {
         borderImageButton.hidden = disabled || CFG.borderStyle !== "image";
@@ -2194,28 +2207,38 @@
 
       if (settings.borderMode !== "none" && settings.borderWidth > 0) {
         const borderImage = settings.borderStyle === "image" && settings.borderImage
-          ? await decodeImageSource(settings.borderImage) : null;
+          ? await decodeBorderImageSource(settings.borderImage) : null;
         if (borderImage) {
-          const segmentCount = 96, imageWidth = borderImage.naturalWidth, imageHeight = borderImage.naturalHeight;
+          const imageWidth = borderImage.width || borderImage.naturalWidth;
+          const imageHeight = borderImage.height || borderImage.naturalHeight;
+          const imageSize = getBorderImageDisplaySize(settings, borderImage);
           for (const border of borders) {
             const direction = settings.alternate && border.row % 2 ? -1 : 1;
-            const rotation = settings.borderRotation === "fixed" ? Math.PI : direction * frameSpin;
-            const halfWidth = settings.borderWidth / 2;
-            for (let i = 0; i < segmentCount; i++) {
-              const a0 = rotation + i * Math.PI * 2 / segmentCount;
-              const a1 = rotation + (i + 1) * Math.PI * 2 / segmentCount;
-              const p00 = project(R * Math.sin(a0), border.y - halfWidth, R * Math.cos(a0));
-              const p10 = project(R * Math.sin(a1), border.y - halfWidth, R * Math.cos(a1));
-              const p01 = project(R * Math.sin(a0), border.y + halfWidth, R * Math.cos(a0));
-              const p11 = project(R * Math.sin(a1), border.y + halfWidth, R * Math.cos(a1));
-              const sx0 = i * imageWidth / segmentCount, sx1 = (i + 1) * imageWidth / segmentCount;
-              const s00 = { x: sx0, y: 0 }, s10 = { x: sx1, y: 0 };
-              const s01 = { x: sx0, y: imageHeight }, s11 = { x: sx1, y: imageHeight };
-              drawImageTriangle(context, borderImage, [s00, s10, s01], [p00, p10, p01]);
-              drawImageTriangle(context, borderImage, [s10, s11, s01], [p10, p11, p01]);
+            const halfWidth = imageSize.width / 2, halfHeight = imageSize.height / 2;
+            const angleStep = Math.PI * 2 / imageSize.count;
+            const rotation = settings.borderRotation === "fixed" ? 0 : direction * frameSpin;
+            for (let i = 0; i < imageSize.count; i++) {
+              const angle = rotation + (i - (imageSize.count - 1) / 2) * angleStep;
+              const point = (x, y) => project(
+                R * Math.sin(angle) + x * Math.cos(angle),
+                y,
+                R * Math.cos(angle) - x * Math.sin(angle)
+              );
+              const topLeft = point(-halfWidth, border.y - halfHeight);
+              const topRight = point(halfWidth, border.y - halfHeight);
+              const bottomLeft = point(-halfWidth, border.y + halfHeight);
+              const bottomRight = point(halfWidth, border.y + halfHeight);
+              const sourceTopLeft = { x: 0, y: 0 };
+              const sourceTopRight = { x: imageWidth, y: 0 };
+              const sourceBottomLeft = { x: 0, y: imageHeight };
+              const sourceBottomRight = { x: imageWidth, y: imageHeight };
+              drawImageTriangle(context, borderImage, [sourceTopLeft, sourceTopRight, sourceBottomLeft],
+                [topLeft, topRight, bottomLeft]);
+              drawImageTriangle(context, borderImage, [sourceTopRight, sourceBottomRight, sourceBottomLeft],
+                [topRight, bottomRight, bottomLeft]);
+              await yieldToBrowser();
+              checkCanceled();
             }
-            await yieldToBrowser();
-            checkCanceled();
           }
         } else {
           context.strokeStyle = settings.borderColor;
@@ -2257,45 +2280,39 @@
       if (settings.image) {
         const image = await decodeImageSource(settings.image);
         const imageSize = getImageDisplaySize(settings, image);
-        const segmentCount = getImageSegmentCount(imageSize, settings.imageStripWidth);
-        let renderedSegments = 0;
         for (let copy = 0; copy < imageSize.count; copy++) {
           const copyOffset = (copy - (imageSize.count - 1) / 2) * imageSize.width;
-          for (let i = 0; i < segmentCount; i++) {
-            const x0 = imageSize.width * i / segmentCount;
-            const x1 = imageSize.width * (i + 1) / segmentCount;
-            const worldX0 = copyOffset + x0 - imageSize.width / 2;
-            const worldX1 = copyOffset + x1 - imageSize.width / 2;
-            const angle0 = frameSpin + worldX0 / R;
-            const angle1 = frameSpin + worldX1 / R;
-            const angle = (angle0 + angle1) / 2;
-            const depth = Math.max(0, Math.min(1, (Math.cos(angle) * cosX + 1) / 2));
-            const scale = 1 - settings.depthScale * (1 - depth);
-            const halfHeight = imageSize.height * scale / 2;
-            if (!settings.backVisible && Math.cos(angle) * cosX <= 0) continue;
-            const projected = project(R * Math.sin(angle), 0, R * Math.cos(angle));
-            context.save();
-            context.globalAlpha = settings.minOpacity + (1 - settings.minOpacity) * Math.pow(depth, settings.fade);
-            const topLeft = project(R * Math.sin(angle0), -halfHeight, R * Math.cos(angle0));
-            const topRight = project(R * Math.sin(angle1), -halfHeight, R * Math.cos(angle1));
-            const bottomLeft = project(R * Math.sin(angle0), halfHeight, R * Math.cos(angle0));
-            const bottomRight = project(R * Math.sin(angle1), halfHeight, R * Math.cos(angle1));
+          const angle = frameSpin + copyOffset / R;
+          const depth = Math.max(0, Math.min(1, (Math.cos(angle) * cosX + 1) / 2));
+          const scale = 1 - settings.depthScale * (1 - depth);
+          const halfWidth = imageSize.width * scale / 2;
+          const halfHeight = imageSize.height * scale / 2;
+          if (settings.backVisible || Math.cos(angle) * cosX > 0) {
+            const point = (x, y) => project(
+              R * Math.sin(angle) + x * Math.cos(angle),
+              y,
+              R * Math.cos(angle) - x * Math.sin(angle)
+            );
+            const topLeft = point(-halfWidth, -halfHeight);
+            const topRight = point(halfWidth, -halfHeight);
+            const bottomLeft = point(-halfWidth, halfHeight);
+            const bottomRight = point(halfWidth, halfHeight);
             const imageWidth = image.width || image.naturalWidth;
             const imageHeight = image.height || image.naturalHeight;
-            const sourceLeft = { x: x0 / imageSize.width * imageWidth, y: 0 };
-            const sourceRight = { x: x1 / imageSize.width * imageWidth, y: 0 };
-            const sourceBottomLeft = { x: sourceLeft.x, y: imageHeight };
-            const sourceBottomRight = { x: sourceRight.x, y: imageHeight };
-            drawImageTriangle(context, image, [sourceLeft, sourceRight, sourceBottomLeft],
+            const sourceTopLeft = { x: 0, y: 0 };
+            const sourceTopRight = { x: imageWidth, y: 0 };
+            const sourceBottomLeft = { x: 0, y: imageHeight };
+            const sourceBottomRight = { x: imageWidth, y: imageHeight };
+            context.save();
+            context.globalAlpha = settings.minOpacity + (1 - settings.minOpacity) * Math.pow(depth, settings.fade);
+            drawImageTriangle(context, image, [sourceTopLeft, sourceTopRight, sourceBottomLeft],
               [topLeft, topRight, bottomLeft]);
-            drawImageTriangle(context, image, [sourceRight, sourceBottomRight, sourceBottomLeft],
+            drawImageTriangle(context, image, [sourceTopRight, sourceBottomRight, sourceBottomLeft],
               [topRight, bottomRight, bottomLeft]);
             context.restore();
-            if (++renderedSegments % 48 === 0) {
-              await yieldToBrowser();
-              checkCanceled();
-            }
           }
+          await yieldToBrowser();
+          checkCanceled();
         }
       } else {
         let renderedCharacters = 0;
@@ -2393,6 +2410,9 @@
           checkCanceled();
         }
         if (exportSettings.image) await decodeImageSource(exportSettings.image);
+        if (exportSettings.borderMode !== "none" && exportSettings.borderStyle === "image" && exportSettings.borderImage) {
+          await decodeBorderImageSource(exportSettings.borderImage);
+        }
         checkCanceled();
         const pixelScale = Math.min(2, maxDimension / Math.max(availableWidth, availableHeight));
         const { width: sceneWidth, height: sceneHeight, scale: sceneScale } =
