@@ -2876,9 +2876,9 @@
       }
     }
 
-    async function drawExportFrame(context, width, height, pixelScale, sceneScale, frameSpin, settings, rows, borders, signal, renderer) {
+    async function drawExportFrame(context, width, height, pixelScale, sceneScale, offsetY, frameSpin, settings, rows, borders, signal, renderer) {
       if (signal.aborted) throw new DOMException("Animated WebP export canceled", "AbortError");
-      renderer.render(settings, frameSpin, pixelScale * sceneScale, 0);
+      renderer.render(settings, frameSpin, pixelScale * sceneScale, -offsetY);
       await yieldToBrowser();
       if (signal.aborted) throw new DOMException("Animated WebP export canceled", "AbortError");
     }
@@ -2951,7 +2951,7 @@
         }
         checkCanceled();
         const pixelScale = Math.min(2, maxDimension / Math.max(availableWidth, availableHeight));
-        const { width: sceneWidth, height: sceneHeight, scale: sceneScale } =
+        const { width: sceneWidth, height: sceneHeight, offsetY, scale: sceneScale } =
           getSceneLayout(exportSettings, availableWidth, availableHeight);
         const width = Math.max(1, Math.round(sceneWidth * sceneScale * pixelScale));
         const height = Math.max(1, Math.round(sceneHeight * sceneScale * pixelScale));
@@ -2969,7 +2969,7 @@
         const frameDurations = Array.from({ length: frameCount }, (_, i) =>
           Math.round((i + 1) * periodMs / frameCount) - Math.round(i * periodMs / frameCount));
         for (let i = 0; i < frameCount; i++) {
-          await drawExportFrame(canvas, width, height, pixelScale, sceneScale,
+          await drawExportFrame(canvas, width, height, pixelScale, sceneScale, offsetY,
             startSpin + Math.sign(exportSettings.speed) * Math.PI * 2 * i / frameCount,
             exportSettings, exportRows, exportBorders, controller.signal, exportRenderer);
           const blob = await new Promise((resolve, reject) => {
