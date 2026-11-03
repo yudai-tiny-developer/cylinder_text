@@ -230,6 +230,10 @@
       gap: 10px;
     }
 
+    .f[hidden] {
+      display: none;
+    }
+
     .f input[type=number] {
       width: 100%;
       box-sizing: border-box;
@@ -692,6 +696,7 @@
       backVisible: true,      // Show the back of the cylinder (mirrored text).
       mirrorFront: false,     // Mirror text on the front side and un-mirror the back side.
       image: "",
+      imageStripWidth: 10,
       paused: false
     };
     const CFG = { ...DEFAULTS };
@@ -699,6 +704,7 @@
     /* UI definitions: rebuild=true marks settings that require rebuilding the text layout. */
     const UI = [
       { k: "text", label: "Text", category: "Text appearance", type: "text", multiline: true, rebuild: true },
+      { k: "imageStripWidth", label: "Image strip width", category: "Text appearance", min: 10, max: 1000, step: 1, rebuild: true },
       { k: "alternate", label: "Alternate direction per row", category: "Text appearance", type: "bool" },
       { k: "separator", label: "Separator", category: "Text appearance", type: "text", rebuild: true },
       { k: "fontFamily", label: "Font", category: "Text appearance", type: "text", list: FONT_PRESETS, rebuild: true },
@@ -807,6 +813,7 @@
       "Settings": "設定", "Privacy Policy": "プライバシーポリシー", "Terms of Use": "利用規約",
       "If the animation isn't smooth, check that hardware acceleration is enabled in your browser settings.": "アニメーションが滑らかでない場合は、ブラウザーのグラフィックアクセラレーションが有効かご確認ください。",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
+      "Image strip width": "画像短冊の幅",
       "Clear image": "画像をクリア",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
       "Border": "枠", "No border": "枠無し", "Top and bottom (all rows)": "全体の上下に枠", "Top only (all rows)": "全体の上だけに枠", "Bottom only (all rows)": "全体の下だけに枠",
@@ -1170,7 +1177,7 @@
       return { width, height: width / aspectRatio, count };
     }
 
-    const getImageSegmentCount = imageSize => Math.max(2, Math.ceil(imageSize.width / 10));
+    const getImageSegmentCount = (imageSize, stripWidth) => Math.max(1, Math.ceil(imageSize.width / stripWidth));
 
     $("panel").firstElementChild.textContent = tr("Settings");
     $("policy-link").textContent = tr("Privacy Policy");
@@ -1303,7 +1310,7 @@
       }
 
       if (imageMode) {
-        const segmentCount = getImageSegmentCount(imageSize);
+        const segmentCount = getImageSegmentCount(imageSize, settings.imageStripWidth);
         const segmentWidth = imageSize.width / segmentCount;
         const chars = [];
         for (let copy = 0; copy < imageSize.count; copy++) {
@@ -1722,6 +1729,10 @@
       clearTextImageButton.hidden = !CFG.image;
       clearTextImageButton.disabled = Boolean(textImageUploadController);
       inputs.text.inp.disabled = Boolean(CFG.image);
+      const { inp, out, wrap } = inputs.imageStripWidth;
+      wrap.hidden = !CFG.image;
+      inp.disabled = !CFG.image;
+      if (out) out.disabled = !CFG.image;
     }
     syncTextImageControls();
     function syncBorderControls() {
@@ -2241,7 +2252,7 @@
       if (settings.image) {
         const image = await decodeImageSource(settings.image);
         const imageSize = getImageDisplaySize(settings, image);
-        const segmentCount = getImageSegmentCount(imageSize);
+        const segmentCount = getImageSegmentCount(imageSize, settings.imageStripWidth);
         let renderedSegments = 0;
         for (let copy = 0; copy < imageSize.count; copy++) {
           const copyOffset = (copy - (imageSize.count - 1) / 2) * imageSize.width;

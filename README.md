@@ -12,6 +12,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Optional border rotation synchronized with the text
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
+- Optional image upload in place of text, with adjustable image strip width
 - Optional mirrored/back-side text
 - Optional front-side mirroring with right-to-left text order and normally oriented back-side text
 - Pause/resume and reset-to-default controls
@@ -44,6 +45,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Setting | Description |
 | --- | --- |
 | Text | Text to display. Put each line on a separate row. Multiple lines share the same starting position. |
+| Image strip width | Sets the width of image strips in pixels when an image is uploaded. |
 | Separator | Text inserted between repeated units. |
 | Font | Font family name or comma-separated font stack. |
 | Weight | Font weight, from 100 to 900. |
