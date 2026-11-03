@@ -1,10 +1,11 @@
 # Cylinder Text Animation
 
-A browser-based 3D text animation that wraps customizable text around a cylinder. The app uses CSS 3D transforms and vanilla JavaScript, so no build step or server is required.
+A browser-based 3D text animation that wraps customizable text around a cylinder. Text, uploaded images, and image borders are mapped onto a smooth WebGL cylinder surface. The app uses vanilla JavaScript, so no build step or server is required.
 
 ## Features
 
 - Animated cylindrical text with customizable direction and speed
+- Smooth text and image mapping over a continuous cylinder surface
 - Multiple text rows with independent, alternating rotation
 - Adjustable font, weight, size, letter spacing, and row spacing
 - Text and outline colors, background color, and outline width
@@ -12,7 +13,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Optional border rotation synchronized with the text
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
-- Optional image upload in place of text, displayed as a single panel on the cylinder
+- Optional image upload in place of text, mapped onto the cylinder surface
 - Optional mirrored/back-side text
 - Optional front-side mirroring with right-to-left text order and normally oriented back-side text
 - Pause/resume and reset-to-default controls
@@ -104,7 +105,7 @@ After changing a setting, the selector returns to its placeholder. Returning all
 
 Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file. An uploaded border image is embedded as a Base64 data URL in JSON exports and presets, so it is restored without uploading the image again.
 
-Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps and adjusts frame delays to match the rotation period. The output uses the calculated scene dimensions, scales to up to twice the available scene dimensions, and is capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, and exports longer than 25 seconds are not supported. This feature requires browser support for WebP canvas encoding.
+Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the same WebGL cylinder renderer as the live view and the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps and adjusts frame delays to match the rotation period. The output uses the calculated scene dimensions, scales to up to twice the available scene dimensions, and is capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, exports longer than 25 seconds are not supported, and the browser must support WebGL and WebP canvas encoding.
 
 ## Privacy
 
@@ -114,7 +115,7 @@ When online, the app requests its suggested fonts from Google Fonts, including w
 
 ## Browser support
 
-Use a current browser with CSS 3D transform support. The built-in fonts, presets, and core animation work without JavaScript frameworks or plugins. The following are capability-dependent:
+Use a current browser with WebGL support for smooth texturing and animated WebP export. If WebGL is unavailable, the app falls back to CSS 3D rendering for the live view. The built-in fonts, presets, and core animation work without JavaScript frameworks or plugins. The following are capability-dependent:
 
 - **Local Font Access:** Chromium browsers that expose `window.queryLocalFonts()`
 - **Dark mode:** browsers that support `prefers-color-scheme`
