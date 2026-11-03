@@ -101,15 +101,15 @@ The preset selector saves named snapshots of the animation settings in browser `
 
 After changing a setting, the selector returns to its placeholder. Returning all settings to the preset values selects it again. Presets remain on the current browser and origin. Clearing site data removes them. Preset names are limited to 40 characters. If browser storage is unavailable, the app reports that it cannot save the preset.
 
-Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file. An uploaded border image is embedded as a Base64 data URL in JSON exports and presets, so it is restored without uploading the image again.
+Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file. Uploaded images, whether used in place of text or as borders, are embedded as Base64 data URLs in JSON exports and presets, so they are restored without uploading the images again.
 
 Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the same WebGL cylinder renderer as the live view and the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps and adjusts frame delays to match the rotation period. The output uses the calculated scene dimensions, scales to up to twice the available scene dimensions, and is capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, exports longer than 25 seconds are not supported, and the browser must support WebGL and WebP canvas encoding.
 
 ## Privacy
 
-The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. The last-used settings and saved presets, including uploaded border images, are stored only in local browser storage.
+The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. The last-used settings and saved presets, including uploaded images used in place of text or as borders, are stored only in local browser storage.
 
-When online, the app requests its suggested fonts from Google Fonts, including when opened as a local file. Google Fonts and, for hosted copies, the hosting provider may receive ordinary request information such as your IP address and browser details. These requests do not include your text, settings, presets, or uploaded border images. See the [Privacy Policy](./privacy-policy.html) for details.
+When online, the app requests its suggested fonts from Google Fonts, including when opened as a local file. Google Fonts and, for hosted copies, the hosting provider may receive ordinary request information such as your IP address and browser details. These requests do not include your text, settings, presets, or uploaded images. See the [Privacy Policy](./privacy-policy.html) for details.
 
 ## Browser support
 
