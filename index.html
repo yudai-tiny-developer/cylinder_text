@@ -2569,9 +2569,9 @@
     let presets = {}, persisted = true;
     try { presets = JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {}; } catch (e) { persisted = false; }
     const has = n => Object.prototype.hasOwnProperty.call(presets, n);
-    const persist = () => {
+    const persist = (nextPresets = presets) => {
       try {
-        localStorage.setItem(STORE_KEY, JSON.stringify(presets));
+        localStorage.setItem(STORE_KEY, JSON.stringify(nextPresets));
         persisted = true;
         return null;
       } catch (e) {
@@ -3032,13 +3032,17 @@
       say("Loaded preset", "success");
     };
     const commitSave = n => {
-      presets[n] = snapshot();
-      const error = persist();
+      const nextPresets = { ...presets, [n]: snapshot() };
+      const error = persist(nextPresets);
+      if (!persisted) {
+        reportStorageSaveError(error);
+        return;
+      }
+      presets = nextPresets;
       renderSel(n);
       loadedPresetName = n;
       loadedPresetSettings = snapshot();
-      if (!persisted) reportStorageSaveError(error);
-      else say("Saved", "success");
+      say("Saved", "success");
     };
     const openSave = () => {   // Pre-fill the loaded preset name for quick overwrites.
       nameInp.value = has(sel.value) ? sel.value : has(loadedPresetName) ? loadedPresetName : "";
@@ -3049,12 +3053,17 @@
     pr.append(
       row(sel, mk("Save", openSave), mk("Delete", () => {
         if (!has(sel.value)) return;
-        delete presets[sel.value];
-        const error = persist();
+        const nextPresets = { ...presets };
+        delete nextPresets[sel.value];
+        const error = persist(nextPresets);
+        if (!persisted) {
+          reportStorageSaveError(error);
+          return;
+        }
+        presets = nextPresets;
         clearPresetState();
         renderSel();
-        if (!persisted) reportStorageSaveError(error);
-        else say("Deleted", "success");
+        say("Deleted", "success");
       })),
       jsonActions,
       jsonLoadProgress.row,
