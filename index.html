@@ -1660,18 +1660,34 @@
       for (const offset of [-canvasWidth, 0, canvasWidth]) draw(x + offset, y, width, height);
     }
 
+    function getTextHalfHeight(settings) {
+      ctx.font = `${settings.fontWeight} ${settings.fontSize}px ${familyCss(settings.fontFamily)}`;
+      ctx.textBaseline = "middle";
+      const metrics = ctx.measureText("国あ漢永");
+      const ascent = metrics.actualBoundingBoxAscent;
+      const descent = metrics.actualBoundingBoxDescent;
+      const glyphHalfHeight = Number.isFinite(ascent) && Number.isFinite(descent)
+        ? Math.max(ascent, descent)
+        : settings.fontSize * 0.65;
+      return glyphHalfHeight + settings.strokeWidth;
+    }
+
+    function getRowStep(settings) {
+      return Math.max(settings.fontSize * settings.rowGap, getTextHalfHeight(settings) * 2);
+    }
+
     function createRenderScene(settings, rows, image, borderImage) {
       const radius = settings.radius;
       const circumference = 2 * Math.PI * radius;
       const imageMode = Boolean(settings.image && image);
       const imageSize = imageMode ? getImageDisplaySize(settings, image) : null;
-      const rowHalfHeight = imageSize ? imageSize.height / 2 : settings.fontSize / 2 + settings.strokeWidth;
+      const rowHalfHeight = imageSize ? imageSize.height / 2 : getTextHalfHeight(settings);
       const rowBounds = rows.map(row => ({
         index: row.index,
         y: row.y,
         phase: row.phase,
-        top: row.y - (imageSize ? imageSize.height / 2 : settings.fontSize / 2 + settings.strokeWidth),
-        bottom: row.y + (imageSize ? imageSize.height / 2 : settings.fontSize / 2 + settings.strokeWidth),
+        top: row.y - rowHalfHeight,
+        bottom: row.y + rowHalfHeight,
         image: row.chars.some(character => character.image)
       }));
       const ys = rows.map(row => row.y);
@@ -1915,8 +1931,9 @@
       const start = settings.repeat ? 0 : -maxUnitW / 2;
       const C = 2 * Math.PI * R;
       const ys = [];
+      const rowStep = imageMode ? fs * settings.rowGap : getRowStep(settings);
       for (let r = 0; r < lines.length; r++) {
-        ys.push((r - (lines.length - 1) / 2) * fs * settings.rowGap);
+        ys.push((r - (lines.length - 1) / 2) * rowStep);
         if (r > 0 && r % BUILD_BATCH_SIZE === 0) {
           await yieldBuild();
           if (request !== rebuildRequest) return;
@@ -1948,7 +1965,7 @@
       if (request !== rebuildRequest) return;
       const borderImageSize = borderImage ? getBorderImageDisplaySize(settings, borderImage) : null;
       if (!webglRenderer && settings.borderMode !== "none") {
-        const rowHalfHeight = imageSize ? imageSize.height / 2 : fs / 2;
+        const rowHalfHeight = imageSize ? imageSize.height / 2 : getTextHalfHeight(settings);
         const topOffset = rowHalfHeight + settings.borderTopSpacing;
         const bottomOffset = rowHalfHeight + settings.borderBottomSpacing;
         const allRows = settings.borderMode === "all" || settings.borderMode === "allTop" || settings.borderMode === "allBottom";
@@ -2110,8 +2127,8 @@
       const strokePadding = settings.image ? 0 : settings.strokeWidth;
       const widthAtZeroTilt = (2 * R + fs * 2 + strokePadding * 2) * referenceFrontScale + 40;
       const imageSize = getImageDisplaySize(settings);
-      const rowSpan = settings.image ? 0 : Math.max(0, settings.text.split("\n").length - 1) * fs * settings.rowGap;
-      const rowHalfHeight = imageSize ? imageSize.height / 2 : fs / 2 + strokePadding;
+      const rowSpan = settings.image ? 0 : Math.max(0, settings.text.split("\n").length - 1) * getRowStep(settings);
+      const rowHalfHeight = imageSize ? imageSize.height / 2 : getTextHalfHeight(settings);
       const heightAtZeroTilt = (rowSpan + 2 * R * Math.abs(Math.sin(settings.tiltX * Math.PI / 180))
         + rowHalfHeight * 2) * referenceFrontScale + 40;
       const tiltZ = settings.tiltZ * Math.PI / 180;

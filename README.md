@@ -70,7 +70,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Radius | Cylinder radius in pixels. |
 | Font size | Character font size in pixels. |
 | Letter spacing | Spacing between characters in em units. |
-| Row gap | Vertical distance between rows in multiples of font size. |
+| Row gap | Minimum vertical distance between rows in multiples of font size; spacing increases when needed to prevent text from overlapping. |
 | Repeat | Repeats text and its separator until each row fills the circumference. |
 | Alternate direction per row | Reverses rotation direction on alternating rows, including borders set to rotate with the text. |
 | Mirror front side | Mirrors the front-side text, arranges the string right-to-left, and displays normally oriented text on the back side. |
