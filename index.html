@@ -749,8 +749,8 @@
           { label: "Do not rotate", value: "fixed" }
         ]
       },
-      { k: "textColor", label: "Text color", category: "Colors", type: "color", rebuild: true },
-      { k: "strokeColor", label: "Outline color", category: "Colors", type: "color", rebuild: true },
+      { k: "textColor", label: "Text color", category: "Colors", type: "color" },
+      { k: "strokeColor", label: "Outline color", category: "Colors", type: "color" },
       { k: "borderColor", label: "Border color", category: "Colors", type: "color" },
       { k: "bgColor", label: "Background", category: "Colors", type: "color" },
       { k: "radius", label: "Radius", category: "Motion and display", min: 1, max: 400, step: 1, rebuild: true },
@@ -1303,7 +1303,7 @@
     const ring = $("ring"), stage = $("stage"), scene = document.querySelector(".scene"), panelEl = $("panel");
     const ctx = document.createElement("canvas").getContext("2d");
     let rowsData = [], borderData = [], spin = 0, last = performance.now(), sceneLayout = null;
-    let rebuildRequest = 0, frameRequest = 0;
+    let rebuildRequest = 0, frameRequest = 0, textColorsPending = false;
 
     const BUILD_BATCH_SIZE = 256;
     const WARP_SAMPLES = 64;
@@ -1530,6 +1530,13 @@
           }));
           warpSettingsKey = "";
         },
+        updateTextColors(settings) {
+          if (!renderScene) return;
+          renderScene.updateTextColors(settings);
+          gl.bindTexture(gl.TEXTURE_2D, contentTexture);
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+          gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, renderScene.contentCanvas);
+        },
         setAnimationTime(timeMs) {
           return renderScene?.setAnimationTime(timeMs);
         },
@@ -1730,41 +1737,49 @@
       contentCanvas.height = atlasHeight;
       const contentContext = contentCanvas.getContext("2d");
       if (!contentContext) throw new Error("Could not create a text texture canvas");
-      contentContext.clearRect(0, 0, atlasWidth, atlasHeight);
-      contentContext.font = `${settings.fontWeight} ${settings.fontSize * scale}px ${familyCss(settings.fontFamily)}`;
-      contentContext.textAlign = "center";
-      contentContext.textBaseline = "middle";
-      contentContext.lineJoin = "round";
       const atlasY = y => (y - extentTop) * scale;
-      for (const row of rows) {
-        const rowY = atlasY(row.y);
-        if (row.chars.some(character => character.image) && image && imageSize) {
-          for (const character of row.chars) {
-            const x = ((character.a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * atlasWidth;
-            const width = imageSize.width * scale, height = imageSize.height * scale;
-            wrapCanvasDraw(contentContext, x - width / 2, rowY - height / 2, width, height,
-              (drawX, drawY, drawWidth, drawHeight) => contentContext.drawImage(image, drawX, drawY, drawWidth, drawHeight));
-          }
-        } else {
+      const drawTextContent = textSettings => {
+        contentContext.clearRect(0, 0, atlasWidth, atlasHeight);
+        contentContext.font = `${textSettings.fontWeight} ${textSettings.fontSize * scale}px ${familyCss(textSettings.fontFamily)}`;
+        contentContext.textAlign = "center";
+        contentContext.textBaseline = "middle";
+        contentContext.lineJoin = "round";
+        for (const row of rows) {
+          const rowY = atlasY(row.y);
           for (const character of row.chars) {
             const x = ((character.a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * atlasWidth;
             const text = character.text === " " ? "\u00a0" : character.text;
             const paint = (drawX, drawY) => {
               contentContext.save();
               contentContext.translate(drawX, drawY);
-              if (settings.mirrorFront) contentContext.scale(-1, 1);
-              if (settings.strokeWidth > 0) {
-                contentContext.strokeStyle = settings.strokeColor;
-                contentContext.lineWidth = settings.strokeWidth * scale;
+              if (textSettings.mirrorFront) contentContext.scale(-1, 1);
+              if (textSettings.strokeWidth > 0) {
+                contentContext.strokeStyle = textSettings.strokeColor;
+                contentContext.lineWidth = textSettings.strokeWidth * scale;
                 contentContext.strokeText(text, 0, 0);
               }
-              contentContext.fillStyle = settings.textColor;
+              contentContext.fillStyle = textSettings.textColor;
               contentContext.fillText(text, 0, 0);
               contentContext.restore();
             };
             wrapCanvasDraw(contentContext, x, rowY, 0, 0, paint);
           }
         }
+      };
+      if (imageMode) {
+        contentContext.clearRect(0, 0, atlasWidth, atlasHeight);
+        for (const row of rows) {
+          const rowY = atlasY(row.y);
+          if (!row.chars.some(character => character.image) || !image || !imageSize) continue;
+          for (const character of row.chars) {
+            const x = ((character.a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) / (2 * Math.PI) * atlasWidth;
+            const width = imageSize.width * scale, height = imageSize.height * scale;
+            wrapCanvasDraw(contentContext, x - width / 2, rowY - height / 2, width, height,
+              (drawX, drawY, drawWidth, drawHeight) => contentContext.drawImage(image, drawX, drawY, drawWidth, drawHeight));
+          }
+        }
+      } else {
+        drawTextContent(settings);
       }
 
       let borderCanvas = null, borderContext = null;
@@ -1875,6 +1890,9 @@
       return {
         radius, rows: rowBounds, borders, contentCanvas, borderCanvas, atlasTop: extentTop,
         atlasScale: scale, maxExtent: Math.max(Math.abs(extentTop), Math.abs(extentBottom)),
+        updateTextColors: textSettings => {
+          if (!imageMode) drawTextContent(textSettings);
+        },
         refreshAnimatedImages,
         setAnimationTime,
         dispose() {
@@ -2214,6 +2232,10 @@
       const animate = !CFG.paused && CFG.speed !== 0;
       if (animate) spin = (spin + CFG.speed * dt * Math.PI / 180) % (Math.PI * 2);
 
+      if (textColorsPending) {
+        webglRenderer?.updateTextColors(CFG);
+        textColorsPending = false;
+      }
       renderSceneFrame();
       if (animate || hasAnimatedImageSources()) scheduleFrame(true);
     }
@@ -2435,6 +2457,7 @@
         scheduleSettingsPersistence();
         updatePresetState();
         if (u.k === "borderMode" || u.k === "borderStyle") syncBorderControls();
+        if (u.k === "textColor" || u.k === "strokeColor") textColorsPending = true;
         updateSceneSettings();
         scheduleFrame();
         if (u.rebuild) (u.k === "fontFamily" || u.type === "text" ? rebuild() : build());
