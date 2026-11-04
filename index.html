@@ -1398,7 +1398,7 @@
             if (color.a < 0.01) discard;
             gl_FragColor = vec4(color.rgb, color.a * alpha);
           } else if (uLayer == 1) {
-            float patternPosition = fract(vTexCoord.x * uPatternScale);
+            float patternPosition = fract(vObjectTexCoord.x * uPatternScale);
             if (uPattern == 1 && patternPosition > 0.24) discard;
             if (uPattern == 2 && patternPosition > 0.62) discard;
             gl_FragColor = vec4(uBorderColor.rgb, uBorderColor.a * alpha);
