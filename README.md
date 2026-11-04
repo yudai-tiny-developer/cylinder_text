@@ -14,6 +14,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
 - Optional image upload in place of text, mapped onto the cylinder surface
+- Animated GIF and WebP images continue playing when used in place of text or as image borders
 - Optional front-side mirroring with right-to-left text order and normally oriented back-side text
 - Pause/resume and reset-to-default controls
 - Automatically restores the last-used settings on the next visit
@@ -55,6 +56,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Background | Stage background color. |
 | Border | Adds no border, a top-only, bottom-only, or top-and-bottom border around all rows or each row. |
 | Border style | Sets the border to dotted, dashed, solid, double, or repeated uploaded image panels that cover one full revolution. Image borders support PNG, JPEG, WebP, and GIF. |
+| Text image | Replaces the text with an uploaded PNG, JPEG, WebP, or GIF image. Animated GIF and WebP files retain their animation. |
 | Border width | Sets the border thickness from 0.5 to 96 pixels. |
 | Top spacing | Sets the gap between the text and the top border from 0 to 48 pixels. |
 | Bottom spacing | Sets the gap between the text and the bottom border from 0 to 48 pixels. |
@@ -103,7 +105,7 @@ After changing a setting, the selector returns to its placeholder. Returning all
 
 Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file. Uploaded images, whether used in place of text or as borders, are embedded as Base64 data URLs in JSON exports and presets, so they are restored without uploading the images again.
 
-Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the same WebGL cylinder renderer as the live view and the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps and adjusts frame delays to match the rotation period. The output uses the calculated scene dimensions, scales to up to twice the available scene dimensions, and is capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, exports longer than 25 seconds are not supported, and the browser must support WebGL and WebP canvas encoding.
+Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the same WebGL cylinder renderer as the live view and the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps and adjusts frame delays to match the rotation period. Animated GIF and WebP image layers use their original frame timing in both the live view and export. The output uses the calculated scene dimensions, scales to up to twice the available scene dimensions, and is capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, exports longer than 25 seconds are not supported, and the browser must support WebGL, WebP canvas encoding, and `ImageDecoder` when animated images are used.
 
 ## Privacy
 
