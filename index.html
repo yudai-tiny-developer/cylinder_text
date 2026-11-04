@@ -2214,6 +2214,12 @@
       const animate = !CFG.paused && CFG.speed !== 0;
       if (animate) spin = (spin + CFG.speed * dt * Math.PI / 180) % (Math.PI * 2);
 
+      renderSceneFrame();
+      if (animate || hasAnimatedImageSources()) scheduleFrame(true);
+    }
+
+    function renderSceneFrame() {
+      if (document.hidden) return;
       const R = CFG.radius, rad = Math.PI / 180;
       const tx = -CFG.tiltX * rad, cosT = Math.cos(tx), sinT = Math.sin(tx);
       if (webglRenderer) {
@@ -2247,7 +2253,6 @@
           }
         });
       }
-      if (animate || hasAnimatedImageSources()) scheduleFrame(true);
     }
 
     function scheduleFrame(continuing = false) {
@@ -3108,10 +3113,15 @@
     syncTextFieldLocation();
     // Reduce the scene's available area by the panel height to keep the animation from overlapping it.
     const measure = () => {
+      const previousBounds = scene.getBoundingClientRect();
       const controlsTop = textDock.hidden ? panelEl.getBoundingClientRect().top : textDock.getBoundingClientRect().top;
       const avoid = Math.max(0, Math.round(innerHeight - controlsTop)) + 8;
       document.documentElement.style.setProperty("--avoid", avoid + "px");
       updateSceneSettings();
+      const nextBounds = scene.getBoundingClientRect();
+      if (previousBounds.width !== nextBounds.width || previousBounds.height !== nextBounds.height) {
+        renderSceneFrame();
+      }
     };
     panelEl.addEventListener("toggle", () => {
       syncTextFieldLocation();
