@@ -831,28 +831,28 @@
       "Mirror front side": "鏡文字にする", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
       "Load installed fonts": "インストール済みフォントを読込", "Loaded": "読み込み済み",
       "Couldn't access installed fonts": "フォント一覧を取得できませんでした",
-      "Hold for 1 second to reset": "1秒間押し続けて離すと初期値に戻します",
-      "Any installed font name (e.g. Arial)": "インストール済みフォント名を入力（例: Meiryo）",
+      "Hold for 1 second, then release to reset": "1秒間押し続けて離すと初期値に戻します",
+      "Enter an installed font name (e.g. Meiryo)": "インストール済みフォント名を入力（例: Meiryo）",
       "Presets": "プリセット", "Select a preset": "プリセットを選択", "Preset name": "プリセット名", "Save": "保存", "Delete": "削除", "Cancel": "キャンセル", "This will overwrite the existing preset": "同じ名前のプリセットを上書きします",
       "Saved": "保存しました", "Deleted": "削除しました", "Loaded preset": "読み込みました",
       "This browser cannot save presets": "このブラウザには保存できません",
       "Could not save current settings": "現在の設定を保存できませんでした",
-      "Browser storage is full": "保存するデータのサイズが大きすぎます",
+      "The data is too large to save": "保存するデータのサイズが大きすぎます",
       "Browser storage is blocked": "ブラウザーの設定により保存がブロックされています",
       "Browser storage error": "ブラウザーの保存機能でエラーが発生しました",
       "Could not load previous settings": "前回の設定を読み込めませんでした",
       "Unsupported image file": "対応していない画像形式です（PNG、JPEG、WebP、GIF）",
-      "Image upload failed": "画像を読み込めませんでした",
-      "Image uploaded": "画像を読み込みました",
+      "Could not load image": "画像を読み込めませんでした",
+      "Image loaded": "画像を読み込みました",
       "Cancel load": "読み込みを中止",
       "Reading image": "画像を読み込み中",
       "Decoding image": "画像を展開中",
-      "Image upload canceled": "画像の読み込みを中止しました",
+      "Image loading canceled": "画像の読み込みを中止しました",
       "Reading settings file": "設定ファイルを読み込み中",
       "Processing settings file": "設定ファイルを処理中",
       "Settings import canceled": "設定の読み込みを中止しました",
       "Download JSON": "JSONを書き出す", "Import JSON": "JSONを読み込む",
-      "Settings exported": "設定をJSONに書き出しました", "Settings imported": "設定を読み込みました",
+      "Settings exported": "設定をJSONに書き出しました", "Settings loaded": "設定を読み込みました",
       "Invalid settings JSON": "設定JSONの形式が正しくありません", "Could not read settings file": "設定ファイルを読み込めませんでした",
       "Download animated WebP": "アニメーションWebPを書き出す",
       "Exporting animated WebP": "アニメーションWebPを書き出しています",
@@ -2114,7 +2114,7 @@
       }).catch(error => {
         if (request === rebuildRequest) {
           console.error("Could not decode uploaded image", error);
-          say("Image upload failed", "error");
+          say("Could not load image", "error");
         }
       });
     }
@@ -2321,7 +2321,7 @@
       else if (u.type === "text") {
         if (u.multiline) { inp.rows = 3; } else inp.type = "text";
         inp.value = CFG[u.k];
-        if (u.k === "fontFamily") inp.placeholder = tr("Any installed font name (e.g. Arial)");
+        if (u.k === "fontFamily") inp.placeholder = tr("Enter an installed font name (e.g. Meiryo)");
         if (u.list) {
           inp.setAttribute("list", "dl-" + u.k);
           const dl = document.createElement("datalist"); dl.id = "dl-" + u.k;
@@ -2383,11 +2383,11 @@
             updatePresetState();
             updateSceneSettings();
             rebuild();
-            say("Image uploaded", "success");
+            say("Image loaded", "success");
           } catch (error) {
-            if (error.name === "AbortError") say("Image upload canceled");
+            if (error.name === "AbortError") say("Image loading canceled");
             else if (error.message === "Unsupported image file") say(error.message, "error");
-            else say("Image upload failed", "error");
+            else say("Could not load image", "error");
           } finally {
             uploadProgress.finish();
             uploadController = null;
@@ -2423,11 +2423,11 @@
             updatePresetState();
             updateSceneSettings();
             rebuild();
-            say("Image uploaded", "success");
+            say("Image loaded", "success");
           } catch (error) {
-            if (error.name === "AbortError") say("Image upload canceled");
+            if (error.name === "AbortError") say("Image loading canceled");
             else if (error.message === "Unsupported image file") say(error.message, "error");
-            else say("Image upload failed", "error");
+            else say("Could not load image", "error");
           } finally {
             uploadProgress.finish();
             textImageUploadController = null;
@@ -2530,8 +2530,8 @@
     const btns = document.createElement("div"); btns.className = "btns";
     const reset = document.createElement("button"); reset.textContent = tr("Reset to defaults");
     reset.classList.add("reset-button");
-    reset.title = tr("Hold for 1 second to reset");
-    reset.setAttribute("aria-label", `${tr("Reset to defaults")}. ${tr("Hold for 1 second to reset")}`);
+    reset.title = tr("Hold for 1 second, then release to reset");
+    reset.setAttribute("aria-label", `${tr("Reset to defaults")}. ${tr("Hold for 1 second, then release to reset")}`);
     const resetToDefaults = () => {
       Object.assign(CFG, DEFAULTS);
       for (const k in inputs) {
@@ -2737,7 +2737,7 @@
       status.dataset.kind = kind;
     };
     function getStorageErrorReason(error) {
-      if (["QuotaExceededError", "NS_ERROR_DOM_QUOTA_REACHED"].includes(error?.name)) return tr("Browser storage is full");
+      if (["QuotaExceededError", "NS_ERROR_DOM_QUOTA_REACHED"].includes(error?.name)) return tr("The data is too large to save");
       if (error?.name === "SecurityError") return tr("Browser storage is blocked");
       return error?.message || error?.name || tr("Browser storage error");
     }
@@ -2801,7 +2801,7 @@
         }
         await applySettings(settings);
         clearPresetState();
-        say("Settings imported", "success");
+        say("Settings loaded", "success");
       } catch (error) {
         if (error.name === "AbortError") {
           say("Settings import canceled");
