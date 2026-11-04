@@ -837,6 +837,9 @@
       "Saved": "保存しました", "Deleted": "削除しました", "Loaded preset": "読み込みました",
       "This browser cannot save presets": "このブラウザには保存できません",
       "Could not save current settings": "現在の設定を保存できませんでした",
+      "Browser storage is full": "ブラウザーの保存容量が不足しています",
+      "Browser storage is blocked": "ブラウザーの設定により保存がブロックされています",
+      "Browser storage error": "ブラウザーの保存機能でエラーが発生しました",
       "Could not load previous settings": "前回の設定を読み込めませんでした",
       "Unsupported image file": "対応していない画像形式です（PNG、JPEG、WebP、GIF）",
       "Image upload failed": "画像を読み込めませんでした",
@@ -2679,6 +2682,11 @@
       status.textContent = tr(s);
       status.dataset.kind = kind;
     };
+    function getStorageErrorReason(error) {
+      if (["QuotaExceededError", "NS_ERROR_DOM_QUOTA_REACHED"].includes(error?.name)) return tr("Browser storage is full");
+      if (error?.name === "SecurityError") return tr("Browser storage is blocked");
+      return error?.message || error?.name || tr("Browser storage error");
+    }
     if (lastSettingsLoadFailed) say("Could not load previous settings", "error");
     let settingsSaveTimer = 0;
     function persistCurrentSettings() {
@@ -2687,7 +2695,8 @@
       try {
         localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(snapshot()));
       } catch (e) {
-        say("Could not save current settings", "error");
+        status.textContent = `${tr("Could not save current settings")}: ${getStorageErrorReason(e)}`;
+        status.dataset.kind = "error";
       }
     }
     function scheduleSettingsPersistence() {
