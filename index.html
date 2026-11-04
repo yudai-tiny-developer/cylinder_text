@@ -837,7 +837,7 @@
       "Saved": "保存しました", "Deleted": "削除しました", "Loaded preset": "読み込みました",
       "This browser cannot save presets": "このブラウザには保存できません",
       "Could not save current settings": "現在の設定を保存できませんでした",
-      "Browser storage is full": "ブラウザーの保存容量が不足しています",
+      "Browser storage is full": "保存するデータのサイズが大きすぎます",
       "Browser storage is blocked": "ブラウザーの設定により保存がブロックされています",
       "Browser storage error": "ブラウザーの保存機能でエラーが発生しました",
       "Could not load previous settings": "前回の設定を読み込めませんでした",
@@ -2569,7 +2569,16 @@
     let presets = {}, persisted = true;
     try { presets = JSON.parse(localStorage.getItem(STORE_KEY) || "{}") || {}; } catch (e) { persisted = false; }
     const has = n => Object.prototype.hasOwnProperty.call(presets, n);
-    const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(presets)); persisted = true; } catch (e) { persisted = false; } };
+    const persist = () => {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify(presets));
+        persisted = true;
+        return null;
+      } catch (e) {
+        persisted = false;
+        return e;
+      }
+    };
     const snapshot = () => ({ ...Object.fromEntries(UI.map(u => [u.k, CFG[u.k]])), borderImage: CFG.borderImage, image: CFG.image });
     const settingsHistory = [snapshot()];
     const maxHistoryEntries = 100;
@@ -2687,6 +2696,10 @@
       if (error?.name === "SecurityError") return tr("Browser storage is blocked");
       return error?.message || error?.name || tr("Browser storage error");
     }
+    function reportStorageSaveError(error) {
+      status.textContent = `${tr("Could not save current settings")}: ${getStorageErrorReason(error)}`;
+      status.dataset.kind = "error";
+    }
     if (lastSettingsLoadFailed) say("Could not load previous settings", "error");
     let settingsSaveTimer = 0;
     function persistCurrentSettings() {
@@ -2695,8 +2708,7 @@
       try {
         localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(snapshot()));
       } catch (e) {
-        status.textContent = `${tr("Could not save current settings")}: ${getStorageErrorReason(e)}`;
-        status.dataset.kind = "error";
+        reportStorageSaveError(e);
       }
     }
     function scheduleSettingsPersistence() {
@@ -3020,10 +3032,13 @@
       say("Loaded preset", "success");
     };
     const commitSave = n => {
-      presets[n] = snapshot(); persist(); renderSel(n);
+      presets[n] = snapshot();
+      const error = persist();
+      renderSel(n);
       loadedPresetName = n;
       loadedPresetSettings = snapshot();
-      say(persisted ? "Saved" : "This browser cannot save presets", persisted ? "success" : "error");
+      if (!persisted) reportStorageSaveError(error);
+      else say("Saved", "success");
     };
     const openSave = () => {   // Pre-fill the loaded preset name for quick overwrites.
       nameInp.value = has(sel.value) ? sel.value : has(loadedPresetName) ? loadedPresetName : "";
@@ -3032,7 +3047,15 @@
     };
     renderSel();
     pr.append(
-      row(sel, mk("Save", openSave), mk("Delete", () => { if (!has(sel.value)) return; delete presets[sel.value]; persist(); clearPresetState(); renderSel(); say("Deleted", "success"); })),
+      row(sel, mk("Save", openSave), mk("Delete", () => {
+        if (!has(sel.value)) return;
+        delete presets[sel.value];
+        const error = persist();
+        clearPresetState();
+        renderSel();
+        if (!persisted) reportStorageSaveError(error);
+        else say("Deleted", "success");
+      })),
       jsonActions,
       jsonLoadProgress.row,
       webpActions,
