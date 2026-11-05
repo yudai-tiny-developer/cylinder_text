@@ -11,6 +11,9 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Text and outline colors, background color, and outline width
 - Optional top-only, bottom-only, or top-and-bottom borders around all rows or each individual row, with independently adjustable top and bottom spacing and customizable color, dotted, dashed, solid, double, or repeating image-panel styles
 - Optional border rotation synchronized with the text
+- Optional center pillar with adjustable thickness, length, color or uploaded image, and optional self-rotation synchronized with the text
+- Adjustable vertical position for the center pillar
+- Optional center-pillar rotation in the opposite direction from the text
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
 - Optional image upload in place of text, mapped onto the cylinder surface
@@ -41,7 +44,7 @@ Then visit `http://localhost:8000`.
 
 Open **Settings** and adjust the controls:
 
-Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinder layout**, and **Motion and display** sections.
+Settings are grouped into **Text appearance**, **Colors**, **Border**, **Pillar**, **Cylinder layout**, and **Motion and display** sections.
 
 | Setting | Description |
 | --- | --- |
@@ -61,6 +64,14 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Cylinde
 | Top spacing | Sets the gap between the text and the top border from 0 to 48 pixels. |
 | Bottom spacing | Sets the gap between the text and the bottom border from 0 to 48 pixels. |
 | Border rotation | Chooses whether the border rotates with the text. |
+| Show pillar | Adds a vertical cylindrical pillar at the center of the text cylinder. |
+| Pillar thickness | Sets the pillar diameter from 1 to 96 pixels. |
+| Pillar length | Sets the pillar length from 1 to 1000 pixels. |
+| Pillar vertical position | Moves the pillar up or down by up to 500 pixels; positive values move it down. |
+| Pillar color | Sets the pillar color when no image is selected. |
+| Pillar image | Wraps an uploaded PNG, JPEG, WebP, or GIF image around the pillar. |
+| Rotate pillar | Chooses whether the center pillar spins on its own axis or remains at a fixed angle. |
+| Reverse rotation | Reverses the pillar's self-rotation direction relative to the text. Shown when pillar rotation is enabled. |
 | Rotation speed | Rotation in degrees per second. Negative values reverse direction. |
 | Tilt (front/back) | Tilts the cylinder toward or away from the viewer. |
 | Tilt (side) | Tilts the cylinder horizontally. |
@@ -103,13 +114,13 @@ The preset selector saves named snapshots of the animation settings in browser `
 
 After changing a setting, the selector returns to its placeholder. Returning all settings to the preset values selects it again. Presets remain on the current browser and origin. Clearing site data removes them. Preset names are limited to 40 characters. If browser storage is unavailable, the app reports that it cannot save the preset.
 
-Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file. Uploaded images, whether used in place of text or as borders, are embedded as Base64 data URLs in JSON exports and presets, so they are restored without uploading the images again.
+Use **Download JSON** to export the current settings to a JSON file, or **Import JSON** to load settings from a previously exported file. Uploaded images, whether used in place of text, as borders, or on the pillar, are embedded as Base64 data URLs in JSON exports and presets, so they are restored without uploading the images again.
 
 Use **Download animated WebP** to export one full rotation as a seamlessly looping animated WebP. The export uses the same WebGL cylinder renderer as the live view and the current text, appearance, and rotation speed (the Pause setting does not affect export). It targets about 59 fps and adjusts frame delays to match the rotation period. Animated GIF and WebP image layers use their original frame timing in both the live view and export. The output uses the calculated scene dimensions, scales to up to twice the available scene dimensions, and is capped at 1920 pixels on its longest side, with high-quality WebP encoding. Rotation speed must be non-zero, exports longer than 25 seconds are not supported, and the browser must support WebGL, WebP canvas encoding, and `ImageDecoder` when animated images are used.
 
 ## Privacy
 
-The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. The last-used settings and saved presets, including uploaded images used in place of text or as borders, are stored only in local browser storage.
+The animation is rendered locally in the browser. Entered text and settings are not transmitted by the app. The last-used settings and saved presets, including uploaded images used in place of text, as borders, or on the pillar, are stored only in local browser storage.
 
 When online, the app requests its suggested fonts from Google Fonts, including when opened as a local file. Google Fonts and, for hosted copies, the hosting provider may receive ordinary request information such as your IP address and browser details. These requests do not include your text, settings, presets, or uploaded images. See the [Privacy Policy](./privacy-policy.html) for details.
 

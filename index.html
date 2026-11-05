@@ -156,6 +156,17 @@
       background-size: 100% 100%;
     }
 
+    .pillar-panel {
+      position: absolute;
+      left: 0;
+      top: 0;
+      border-radius: 50%;
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      pointer-events: none;
+      backface-visibility: visible;
+    }
+
     /* ===== Control panel ===== */
     .panel {
       position: fixed;
@@ -691,6 +702,13 @@
       borderTopSpacing: 8,
       borderBottomSpacing: 8,
       borderRotation: "withText",
+      pillarEnabled: false,
+      pillarThickness: 12,
+      pillarLength: 300,
+      pillarVerticalPosition: 0,
+      pillarColor: "#f2b45a",
+      pillarRotation: true,
+      pillarReverseRotation: false,
       bgColor: "#0f1b30",     // Background color.
       speed: -36,             // Rotation speed (degrees/second); negative values reverse direction.
       tiltX: 18,              // Front/back tilt (degrees); positive values tilt the top away.
@@ -703,6 +721,7 @@
       fade: 1.5,              // Fade curve toward the back; larger values fade faster.
       mirrorFront: false,     // Mirror text on the front side and un-mirror the back side.
       image: "",
+      pillarImage: "",
       paused: false
     };
     const CFG = { ...DEFAULTS };
@@ -749,9 +768,16 @@
           { label: "Do not rotate", value: "fixed" }
         ]
       },
+      { k: "pillarEnabled", label: "Show pillar", category: "Pillar", type: "bool", rebuild: true },
+      { k: "pillarThickness", label: "Pillar thickness", category: "Pillar", min: 1, max: 96, step: 1, rebuild: true },
+      { k: "pillarLength", label: "Pillar length", category: "Pillar", min: 1, max: 1000, step: 1, rebuild: true },
+      { k: "pillarVerticalPosition", label: "Pillar vertical position", category: "Pillar", min: -500, max: 500, step: 1, rebuild: true },
+      { k: "pillarRotation", label: "Rotate pillar", category: "Pillar", type: "bool" },
+      { k: "pillarReverseRotation", label: "Reverse rotation", category: "Pillar", type: "bool" },
       { k: "textColor", label: "Text color", category: "Colors", type: "color" },
       { k: "strokeColor", label: "Outline color", category: "Colors", type: "color" },
       { k: "borderColor", label: "Border color", category: "Colors", type: "color" },
+      { k: "pillarColor", label: "Pillar color", category: "Colors", type: "color" },
       { k: "bgColor", label: "Background", category: "Colors", type: "color" },
       { k: "radius", label: "Radius", category: "Motion and display", min: 1, max: 400, step: 1, rebuild: true },
       { k: "speed", label: "Rotation speed", category: "Motion and display", min: -180, max: 180, step: 1 },
@@ -787,6 +813,11 @@
           || (obj.image && !/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.image))) return null;
         settings.image = obj.image;
       }
+      if (Object.prototype.hasOwnProperty.call(obj, "pillarImage")) {
+        if (typeof obj.pillarImage !== "string"
+          || (obj.pillarImage && !/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.pillarImage))) return null;
+        settings.pillarImage = obj.pillarImage;
+      }
       return Object.keys(settings).length ? settings : null;
     }
 
@@ -803,6 +834,7 @@
         }
         if (typeof settings.borderImage === "string") CFG.borderImage = settings.borderImage;
         if (typeof settings.image === "string") CFG.image = settings.image;
+        if (typeof settings.pillarImage === "string") CFG.pillarImage = settings.pillarImage;
       } else if (saved) lastSettingsLoadFailed = true;
     } catch (e) {
       lastSettingsLoadFailed = true;
@@ -824,7 +856,9 @@
       "Border style": "枠のスタイル", "Solid": "実線", "Dashed": "破線", "Dotted": "点線", "Double": "二重線", "Image file": "画像ファイル",
       "Upload image": "画像をアップロード", "Change image": "画像を変更",
       "Border width": "枠の太さ", "Top spacing": "上の余白", "Bottom spacing": "下の余白", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
-      "Text appearance": "文字の見た目", "Colors": "色", "Motion and display": "円柱の動きと表示",
+      "Text appearance": "文字の見た目", "Pillar": "柱", "Show pillar": "柱を表示", "Pillar thickness": "柱の太さ", "Pillar length": "柱の長さ", "Pillar vertical position": "柱の上下位置", "Pillar image": "柱の画像",
+      "Pillar color": "柱の色", "Rotate pillar": "柱を回転", "Reverse rotation": "逆回転",
+      "Colors": "色", "Motion and display": "円柱の動きと表示",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
       "Row gap": "行の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "行ごとに逆回転",
@@ -870,6 +904,7 @@
     const $ = id => document.getElementById(id);
     let decodedImageSource = "", decodedImagePromise = null, decodedImage = null, decodedImageObjectUrl = "";
     let decodedBorderImageSource = "", decodedBorderImagePromise = null, decodedBorderImage = null;
+    let decodedPillarImageSource = "", decodedPillarImagePromise = null, decodedPillarImage = null;
     function cacheDecodedImageSource(src, image) {
       if (decodedImageObjectUrl) URL.revokeObjectURL(decodedImageObjectUrl);
       decodedImageSource = src;
@@ -1047,6 +1082,29 @@
       return decodedBorderImagePromise;
     }
 
+    function decodePillarImageSource(src) {
+      if (decodedPillarImageSource === src && decodedPillarImagePromise) return decodedPillarImagePromise;
+      decodedPillarImageSource = src;
+      decodedPillarImage = null;
+      decodedPillarImagePromise = new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => {
+          if (decodedPillarImageSource === src) decodedPillarImage = image;
+          resolve(image);
+        };
+        image.onerror = () => {
+          if (decodedPillarImageSource === src) {
+            decodedPillarImageSource = "";
+            decodedPillarImagePromise = null;
+            decodedPillarImage = null;
+          }
+          reject(new Error("Could not decode image"));
+        };
+        image.src = src;
+      });
+      return decodedPillarImagePromise;
+    }
+
     function decodeImageBlob(blob) {
       const objectUrl = URL.createObjectURL(blob);
       return new Promise((resolve, reject) => {
@@ -1158,7 +1216,7 @@
               settings[field.key] = value;
             }
             const imagePattern = /^data:image\\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i;
-            for (const key of ["borderImage", "image"]) {
+            for (const key of ["borderImage", "image", "pillarImage"]) {
               if (!own(key)) continue;
               if (typeof obj[key] !== "string" || (obj[key] && !imagePattern.test(obj[key]))) {
                 self.postMessage({ type: "invalid" });
@@ -1302,7 +1360,7 @@
     $("graphics-hint").textContent = tr("For the smooth WebGL renderer, enable hardware acceleration in your browser settings.");
     const ring = $("ring"), stage = $("stage"), scene = document.querySelector(".scene"), panelEl = $("panel");
     const ctx = document.createElement("canvas").getContext("2d");
-    let rowsData = [], borderData = [], spin = 0, last = performance.now(), sceneLayout = null;
+    let rowsData = [], borderData = [], pillarData = null, spin = 0, last = performance.now(), sceneLayout = null;
     let rebuildRequest = 0, frameRequest = 0, textColorsPending = false;
 
     const BUILD_BATCH_SIZE = 256;
@@ -1377,14 +1435,17 @@
         precision mediump float;
         uniform sampler2D uContentTexture;
         uniform sampler2D uBorderTexture;
+        uniform sampler2D uPillarTexture;
         uniform int uLayer;
         uniform int uPattern;
+        uniform int uPillarImage;
         uniform float uPatternScale;
         uniform float uMinOpacity;
         uniform float uFade;
         uniform float uDepthScale;
         uniform float uFadeEnabled;
         uniform vec4 uBorderColor;
+        uniform vec4 uPillarColor;
         varying vec2 vTexCoord;
         varying vec2 vObjectTexCoord;
         varying float vOpacity;
@@ -1402,6 +1463,12 @@
             if (uPattern == 1 && patternPosition > 0.24) discard;
             if (uPattern == 2 && patternPosition > 0.62) discard;
             gl_FragColor = vec4(uBorderColor.rgb, uBorderColor.a * alpha);
+          } else if (uLayer == 3) {
+            vec4 color = uPillarImage == 1
+              ? texture2D(uPillarTexture, vObjectTexCoord)
+              : uPillarColor;
+            if (color.a < 0.01) discard;
+            gl_FragColor = vec4(color.rgb, color.a * alpha);
           } else {
             vec4 color = texture2D(uBorderTexture, vec2(fract(vTexCoord.x), vTexCoord.y));
             if (color.a < 0.01) discard;
@@ -1442,26 +1509,28 @@
       };
       const uniforms = Object.fromEntries([
         "uViewport", "uOutputScale", "uOffsetY", "uPerspective", "uFocalLength", "uFar", "uRadius", "uTiltX", "uTiltZ",
-        "uRotation", "uDepthScale", "uWarpAverage", "uRowY", "uContentTexture", "uBorderTexture",
+        "uRotation", "uDepthScale", "uWarpAverage", "uRowY", "uContentTexture", "uBorderTexture", "uPillarTexture",
         "uWarpBaseline", "uLayer", "uPattern", "uPatternScale", "uMinOpacity", "uFade", "uFadeEnabled",
-        "uBorderColor"
+        "uBorderColor", "uPillarImage", "uPillarColor"
       ].map(name => [name, gl.getUniformLocation(program, name)]));
       const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
       let renderScene = null;
       let sceneMeshes = [];
       let borderMeshes = [];
+      let pillarMesh = null;
       let contentTexture = null;
       let borderTexture = null;
+      let pillarTexture = null;
       let warpSettingsKey = "";
       let warpAverages = new Map();
-      const createTexture = source => {
+      const createTexture = (source, repeatS = true) => {
         const texture = gl.createTexture();
         if (!texture) throw new Error("Could not create a WebGL texture");
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, repeatS ? gl.REPEAT : gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
         return texture;
@@ -1491,6 +1560,36 @@
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
         return { vertexBuffer, indexBuffer, count: indices.length };
       };
+      const createPillarMesh = (thickness, length, verticalPosition) => {
+        const segments = 64;
+        const vertices = new Float32Array(((segments + 1) * 2 + 2) * 5);
+        const indices = new Uint16Array(segments * 12);
+        const top = verticalPosition - length / 2, bottom = verticalPosition + length / 2;
+        const centerZ = 0, tubeRadius = thickness / 2;
+        for (let i = 0; i <= segments; i++) {
+          const angle = i * Math.PI * 2 / segments;
+          const x = tubeRadius * Math.sin(angle);
+          const z = centerZ + tubeRadius * Math.cos(angle);
+          const offset = i * 10;
+          vertices.set([x, top, z, i / segments, 1, x, bottom, z, i / segments, 0], offset);
+          if (i < segments) {
+            const index = i * 2;
+            const start = i * 6;
+            indices.set([index, index + 2, index + 1, index + 1, index + 2, index + 3], start);
+            const topCenter = (segments + 1) * 2, bottomCenter = topCenter + 1;
+            const capStart = segments * 6 + i * 6;
+            indices.set([topCenter, index, index + 2, bottomCenter, index + 3, index + 1], capStart);
+          }
+        }
+        vertices.set([0, top, centerZ, 0.5, 1, 0, bottom, centerZ, 0.5, 0], (segments + 1) * 10);
+        const vertexBuffer = gl.createBuffer(), indexBuffer = gl.createBuffer();
+        if (!vertexBuffer || !indexBuffer) throw new Error("Could not create WebGL pillar buffers");
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+        return { vertexBuffer, indexBuffer, count: indices.length };
+      };
       const destroyMeshes = meshes => meshes.forEach(mesh => {
         gl.deleteBuffer(mesh.vertexBuffer);
         gl.deleteBuffer(mesh.indexBuffer);
@@ -1509,11 +1608,17 @@
           renderScene?.dispose?.();
           destroyMeshes(sceneMeshes);
           destroyMeshes(borderMeshes);
+          if (pillarMesh) destroyMeshes([pillarMesh]);
           if (borderTexture !== contentTexture) deleteTexture(borderTexture);
           deleteTexture(contentTexture);
+          if (pillarTexture) deleteTexture(pillarTexture);
           renderScene = scene;
           contentTexture = createTexture(scene.contentCanvas);
           borderTexture = scene.borderCanvas ? createTexture(scene.borderCanvas) : contentTexture;
+          pillarTexture = scene.pillar?.image ? createTexture(scene.pillar.image, false) : null;
+          pillarMesh = scene.pillar ? createPillarMesh(
+            scene.pillar.thickness, scene.pillar.length, scene.pillar.verticalPosition
+          ) : null;
           sceneMeshes = scene.rows.map(row => ({
             ...row,
             mesh: createMesh({
@@ -1555,6 +1660,12 @@
             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
             gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, renderScene.borderCanvas);
           }
+          if (imageUpdates.pillar && pillarTexture) {
+            gl.activeTexture(gl.TEXTURE2);
+            gl.bindTexture(gl.TEXTURE_2D, pillarTexture);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageUpdates.pillar);
+          }
           gl.viewport(0, 0, width, height);
           const bg = settings.bgColor.match(/[\da-f]{2}/gi).map(value => parseInt(value, 16) / 255);
           gl.clearColor(bg[0], bg[1], bg[2], 1);
@@ -1574,10 +1685,13 @@
           gl.uniform1f(uniforms.uFade, settings.fade);
           gl.uniform1i(uniforms.uContentTexture, 0);
           gl.uniform1i(uniforms.uBorderTexture, 1);
+          gl.uniform1i(uniforms.uPillarTexture, 2);
           gl.activeTexture(gl.TEXTURE0);
           gl.bindTexture(gl.TEXTURE_2D, contentTexture);
           gl.activeTexture(gl.TEXTURE1);
           gl.bindTexture(gl.TEXTURE_2D, borderTexture);
+          gl.activeTexture(gl.TEXTURE2);
+          gl.bindTexture(gl.TEXTURE_2D, pillarTexture || contentTexture);
           const warpKey = `${settings.radius}:${settings.tiltX}:${settings.depthScale}`;
           if (warpKey !== warpSettingsKey) {
             warpSettingsKey = warpKey;
@@ -1604,6 +1718,8 @@
           }
           const color = settings.borderColor.match(/[\da-f]{2}/gi).map(value => parseInt(value, 16) / 255);
           gl.uniform4f(uniforms.uBorderColor, color[0], color[1], color[2], 1);
+          const pillarColor = settings.pillarColor.match(/[\da-f]{2}/gi).map(value => parseInt(value, 16) / 255);
+          gl.uniform4f(uniforms.uPillarColor, pillarColor[0], pillarColor[1], pillarColor[2], 1);
           const draw = (mesh, angle, rowY, layer, fadeEnabled, depthScale, pattern = 0) => {
             gl.uniform1f(uniforms.uRotation, angle);
             gl.uniform1f(uniforms.uRowY, rowY);
@@ -1627,6 +1743,12 @@
             gl.vertexAttribPointer(attributes.texCoord, 2, gl.FLOAT, false, 20, 12);
             gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
           };
+          if (pillarMesh) {
+            gl.uniform1i(uniforms.uPillarImage, renderScene.pillar.image ? 1 : 0);
+            const direction = settings.pillarReverseRotation ? -1 : 1;
+            draw(pillarMesh, settings.pillarRotation ? direction * rotation : 0,
+              settings.pillarVerticalPosition, 3, false, 0);
+          }
           for (const row of sceneMeshes) {
             const direction = settings.alternate && row.index % 2 ? -1 : 1;
             draw(row.mesh, direction * rotation + row.phase, row.y, 0, true, settings.depthScale);
@@ -1653,6 +1775,7 @@
           destroyMeshes(borderMeshes);
           if (borderTexture !== contentTexture) deleteTexture(borderTexture);
           deleteTexture(contentTexture);
+          if (pillarTexture) deleteTexture(pillarTexture);
           gl.deleteProgram(program);
         }
       };
@@ -1683,7 +1806,7 @@
       return Math.max(settings.fontSize * settings.rowGap, getTextHalfHeight(settings) * 2);
     }
 
-    function createRenderScene(settings, rows, image, borderImage) {
+    function createRenderScene(settings, rows, image, borderImage, pillarImage) {
       const radius = settings.radius;
       const circumference = 2 * Math.PI * radius;
       const imageMode = Boolean(settings.image && image);
@@ -1801,17 +1924,19 @@
         }
       }
 
-      let lastContentImage = image, lastBorderImage = borderImage;
+      let lastContentImage = image, lastBorderImage = borderImage, lastPillarImage = pillarImage;
       let fixedAnimationImages = null;
-      let imageAnimationPlayer = null, borderAnimationPlayer = null;
+      let imageAnimationPlayer = null, borderAnimationPlayer = null, pillarAnimationPlayer = null;
       const refreshAnimatedImages = () => {
-        let currentImage = image, currentBorderImage = borderImage;
-        const updates = { content: false, border: false };
+        let currentImage = image, currentBorderImage = borderImage, currentPillarImage = pillarImage;
+        const updates = { content: false, border: false, pillar: false };
         if (fixedAnimationImages) {
           currentImage = fixedAnimationImages.content || image;
           currentBorderImage = fixedAnimationImages.border || borderImage;
+          currentPillarImage = fixedAnimationImages.pillar || pillarImage;
           updates.content = imageMode && currentImage !== lastContentImage;
           updates.border = Boolean(borderContext && currentBorderImage !== lastBorderImage);
+          updates.pillar = Boolean(settings.pillarEnabled && currentPillarImage !== lastPillarImage);
         } else {
           if (imageMode && shouldRefreshAnimatedImage(settings.image)) {
             currentImage = getAnimatedImageFrame(settings.image, image);
@@ -1820,6 +1945,10 @@
           if (borderContext && shouldRefreshAnimatedImage(settings.borderImage)) {
             currentBorderImage = getAnimatedImageFrame(settings.borderImage, borderImage);
             updates.border = currentBorderImage !== lastBorderImage;
+          }
+          if (settings.pillarEnabled && shouldRefreshAnimatedImage(settings.pillarImage)) {
+            currentPillarImage = getAnimatedImageFrame(settings.pillarImage, pillarImage);
+            updates.pillar = currentPillarImage !== lastPillarImage;
           }
         }
         if (updates.content) {
@@ -1849,6 +1978,8 @@
         }
         lastContentImage = currentImage;
         lastBorderImage = currentBorderImage;
+        lastPillarImage = currentPillarImage;
+        updates.pillar = updates.pillar ? currentPillarImage : false;
         return updates;
       };
       const setAnimationTime = async timeMs => {
@@ -1858,13 +1989,15 @@
           const player = currentPlayer || await createAnimatedImagePlayer(src);
           return { player, frame: player ? await player.frameAtExact(timeMs) : fallback };
         };
-        const [content, border] = await Promise.all([
+        const [content, border, pillar] = await Promise.all([
           getFrameAt(imageMode ? settings.image : "", imageAnimationPlayer, image),
-          getFrameAt(borderContext ? settings.borderImage : "", borderAnimationPlayer, borderImage)
+          getFrameAt(borderContext ? settings.borderImage : "", borderAnimationPlayer, borderImage),
+          getFrameAt(settings.pillarEnabled ? settings.pillarImage : "", pillarAnimationPlayer, pillarImage)
         ]);
         imageAnimationPlayer = content.player;
         borderAnimationPlayer = border.player;
-        fixedAnimationImages = { content: content.frame, border: border.frame };
+        pillarAnimationPlayer = pillar.player;
+        fixedAnimationImages = { content: content.frame, border: border.frame, pillar: pillar.frame };
       };
 
       const borders = borderRows.flatMap(border => {
@@ -1889,7 +2022,19 @@
       });
       return {
         radius, rows: rowBounds, borders, contentCanvas, borderCanvas, atlasTop: extentTop,
-        atlasScale: scale, maxExtent: Math.max(Math.abs(extentTop), Math.abs(extentBottom)),
+        pillar: settings.pillarEnabled ? {
+          thickness: settings.pillarThickness,
+          length: settings.pillarLength,
+          verticalPosition: settings.pillarVerticalPosition,
+          image: pillarImage
+        } : null,
+        atlasScale: scale, maxExtent: Math.max(
+          Math.abs(extentTop),
+          Math.abs(extentBottom),
+          settings.pillarEnabled
+            ? Math.abs(settings.pillarVerticalPosition) + settings.pillarLength / 2
+            : 0
+        ),
         updateTextColors: textSettings => {
           if (!imageMode) drawTextContent(textSettings);
         },
@@ -1898,6 +2043,7 @@
         dispose() {
           imageAnimationPlayer?.dispose();
           borderAnimationPlayer?.dispose();
+          pillarAnimationPlayer?.dispose();
         }
       };
     }
@@ -1912,7 +2058,7 @@
 
     async function build(request = ++rebuildRequest) {
       const settings = { ...CFG };
-      ring.innerHTML = ""; rowsData = []; borderData = [];
+      ring.innerHTML = ""; rowsData = []; borderData = []; pillarData = null;
       const { radius: R, fontSize: fs, letterSpacing: ls, fontWeight: fw } = settings;
       const family = familyCss(settings.fontFamily);
       ring.style.fontFamily = family;
@@ -1980,6 +2126,8 @@
       };
       const borderImage = settings.borderMode !== "none" && settings.borderStyle === "image" && settings.borderImage
         ? await decodeBorderImageSource(settings.borderImage) : null;
+      const pillarImage = settings.pillarEnabled && settings.pillarImage
+        ? await decodePillarImageSource(settings.pillarImage) : null;
       if (request !== rebuildRequest) return;
       const borderImageSize = borderImage ? getBorderImageDisplaySize(settings, borderImage) : null;
       if (!webglRenderer && settings.borderMode !== "none") {
@@ -2028,6 +2176,18 @@
             borderData.push({ el: border, y, row });
           }
         }
+      }
+
+      if (settings.pillarEnabled && !webglRenderer) {
+        const el = document.createElement("div");
+        el.className = "pillar-panel";
+        el.setAttribute("aria-hidden", "true");
+        el.style.width = settings.pillarThickness + "px";
+        el.style.height = settings.pillarLength + "px";
+        el.style.backgroundColor = settings.pillarColor;
+        if (settings.pillarImage) el.style.backgroundImage = `url("${settings.pillarImage}")`;
+        ring.appendChild(el);
+        pillarData = { el };
       }
 
       if (imageMode) {
@@ -2094,7 +2254,7 @@
       }
       flushBatch();
       if (webglRenderer) {
-        const scene = createRenderScene(settings, rowsData, decodedImage, borderImage);
+        const scene = createRenderScene(settings, rowsData, decodedImage, borderImage, pillarImage);
         if (request !== rebuildRequest) return;
         webglRenderer.setScene(scene);
       }
@@ -2109,7 +2269,9 @@
         ? document.fonts.load(spec, CFG.text.slice(0, 1000) + CFG.separator.slice(0, 100)).catch(() => { })
         : Promise.resolve();
       const imageLoading = CFG.image ? decodeImageSource(CFG.image) : Promise.resolve(null);
-      return Promise.all([fontLoading, imageLoading]).then(() => {
+      const pillarImageLoading = CFG.pillarEnabled && CFG.pillarImage
+        ? decodePillarImageSource(CFG.pillarImage) : Promise.resolve(null);
+      return Promise.all([fontLoading, imageLoading, pillarImageLoading]).then(() => {
         if (request === rebuildRequest) return build(request);
       }).catch(error => {
         if (request === rebuildRequest) {
@@ -2163,12 +2325,12 @@
       const hasTopBorder = bordersEnabled && !["allBottom", "rowsBottom"].includes(settings.borderMode);
       const hasBottomBorder = bordersEnabled && !["allTop", "rowsTop"].includes(settings.borderMode);
       const projectedRadius = R;
-      const top = -rowSpan / 2 - rowHalfHeight
+      const textTop = -rowSpan / 2 - rowHalfHeight
         - (hasTopBorder ? settings.borderTopSpacing + borderHalfHeight : 0);
-      const bottom = rowSpan / 2 + rowHalfHeight
+      const textBottom = rowSpan / 2 + rowHalfHeight
         + (hasBottomBorder ? settings.borderBottomSpacing + borderHalfHeight : 0);
       let minY = Infinity, maxY = -Infinity;
-      for (const y of [top, bottom]) {
+      for (const y of [textTop, textBottom]) {
         for (let i = 0; i < 1440; i++) {
           const angle = i * Math.PI / 720;
           const x = projectedRadius * Math.sin(angle), z = projectedRadius * Math.cos(angle);
@@ -2221,6 +2383,7 @@
     function hasAnimatedImageSources() {
       return Boolean(webglRenderer && (
         shouldRefreshAnimatedImage(CFG.image)
+        || (CFG.pillarEnabled && shouldRefreshAnimatedImage(CFG.pillarImage))
         || (CFG.borderMode !== "none" && CFG.borderStyle === "image" && shouldRefreshAnimatedImage(CFG.borderImage))
       ));
     }
@@ -2251,6 +2414,14 @@
         webglRenderer.resize(bounds.width, bounds.height, pixelRatio);
         webglRenderer.render(CFG, spin, pixelRatio * layout.scale, -layout.offsetY);
       } else {
+        if (pillarData) {
+          pillarData.el.style.backgroundColor = CFG.pillarColor;
+          pillarData.el.style.backgroundImage = CFG.pillarImage ? `url("${CFG.pillarImage}")` : "";
+          const pillarDirection = CFG.pillarReverseRotation ? -1 : 1;
+          const pillarRotation = CFG.pillarRotation ? pillarDirection * spin : 0;
+          pillarData.el.style.transform =
+            `translate(-50%,-50%) translateY(${CFG.pillarVerticalPosition}px) rotateY(${pillarRotation}rad)`;
+        }
         if (CFG.borderRotation === "withText") {
           borderData.forEach(({ el, y, row, angle }) => {
             const direction = CFG.alternate && row % 2 ? -1 : 1;
@@ -2292,8 +2463,10 @@
     const fields = $("fields");
     const inputs = {};
     let borderImageButton = null, borderImageFile = null;
+    let pillarImageButton = null, clearPillarImageButton = null, pillarImageFile = null, pillarImageProgress = null, pillarImageField = null;
     let textImageButton = null, clearTextImageButton = null, textImageFile = null;
     let textImageUploadController = null;
+    let pillarImageUploadController = null;
     let loadedPresetName = "";
     let loadedPresetSettings = null;
     let currentCategory = "";
@@ -2457,6 +2630,8 @@
         scheduleSettingsPersistence();
         updatePresetState();
         if (u.k === "borderMode" || u.k === "borderStyle") syncBorderControls();
+        if (u.k === "pillarEnabled") syncPillarControls();
+        if (u.k === "pillarRotation") syncPillarControls();
         if (u.k === "textColor" || u.k === "strokeColor") textColorsPending = true;
         updateSceneSettings();
         scheduleFrame();
@@ -2485,6 +2660,67 @@
       if (fontLoadStatus) wrap.append(fontLoadStatus);
       if (out) wrap.append(out);
       fields.appendChild(wrap);
+      if (u.k === "pillarRotation") {
+        const imageField = document.createElement("div");
+        pillarImageField = imageField;
+        imageField.className = "f wide";
+        const imageLabel = document.createElement("label");
+        imageLabel.textContent = tr("Pillar image");
+        pillarImageButton = document.createElement("button");
+        pillarImageButton.type = "button";
+        pillarImageButton.className = "border-image-upload";
+        pillarImageButton.addEventListener("click", () => pillarImageFile.click());
+        clearPillarImageButton = document.createElement("button");
+        clearPillarImageButton.type = "button";
+        clearPillarImageButton.textContent = tr("Clear image");
+        clearPillarImageButton.addEventListener("click", () => {
+          if (!CFG.pillarImage) return;
+          CFG.pillarImage = "";
+          syncPillarControls();
+          recordSettingsHistory(true);
+          scheduleSettingsPersistence();
+          updatePresetState();
+          updateSceneSettings();
+          rebuild();
+        });
+        pillarImageFile = document.createElement("input");
+        pillarImageFile.type = "file";
+        pillarImageFile.accept = "image/png,image/jpeg,image/webp,image/gif";
+        pillarImageFile.hidden = true;
+        pillarImageFile.addEventListener("change", async () => {
+          const file = pillarImageFile.files?.[0];
+          if (!file) return;
+          pillarImageUploadController = new AbortController();
+          pillarImageProgress.start(pillarImageUploadController, "Reading image", "Decoding image");
+          syncPillarControls();
+          try {
+            CFG.pillarImage = await readImageFile(file, pillarImageUploadController.signal,
+              (phase, loaded, total) => pillarImageProgress.update(phase, loaded, total));
+            await decodePillarImageSource(CFG.pillarImage);
+            recordSettingsHistory(true);
+            scheduleSettingsPersistence();
+            updatePresetState();
+            updateSceneSettings();
+            rebuild();
+            say("Image loaded", "success");
+          } catch (error) {
+            if (error.name === "AbortError") say("Image loading canceled");
+            else if (error.message === "Unsupported image file") say(error.message, "error");
+            else say("Could not load image", "error");
+          } finally {
+            pillarImageProgress.finish();
+            pillarImageUploadController = null;
+            syncPillarControls();
+            pillarImageFile.value = "";
+          }
+        });
+        pillarImageProgress = createFileLoadProgress();
+        const imageButtons = document.createElement("div");
+        imageButtons.className = "text-image-actions";
+        imageButtons.append(pillarImageButton, clearPillarImageButton);
+        imageField.append(imageLabel, imageButtons, pillarImageFile, pillarImageProgress.row);
+        fields.insertBefore(imageField, wrap);
+      }
     });
     function syncTextImageControls() {
       if (!textImageButton) return;
@@ -2526,7 +2762,29 @@
         borderImageButton.textContent = tr(CFG.borderImage ? "Change image" : "Upload image");
       }
     }
+    function syncPillarControls() {
+      const disabled = !CFG.pillarEnabled;
+      const showRotation = !disabled && Boolean(CFG.pillarImage);
+      for (const k of ["pillarThickness", "pillarLength", "pillarVerticalPosition", "pillarColor", "pillarRotation", "pillarReverseRotation"]) {
+        const { inp, out, wrap } = inputs[k];
+        const imageColor = k === "pillarColor" && Boolean(CFG.pillarImage);
+        inp.disabled = disabled || imageColor;
+        if (out) out.disabled = disabled;
+        wrap.hidden = disabled || imageColor
+          || (k === "pillarRotation" && !showRotation)
+          || (k === "pillarReverseRotation" && (!showRotation || !CFG.pillarRotation));
+      }
+      if (pillarImageButton) {
+        pillarImageButton.textContent = tr(CFG.pillarImage ? "Change image" : "Upload image");
+        pillarImageButton.hidden = disabled;
+        pillarImageButton.disabled = Boolean(pillarImageUploadController);
+        clearPillarImageButton.hidden = !CFG.pillarImage;
+        clearPillarImageButton.disabled = Boolean(pillarImageUploadController);
+        pillarImageField.hidden = disabled;
+      }
+    }
     syncBorderControls();
+    syncPillarControls();
     const btns = document.createElement("div"); btns.className = "btns";
     const reset = document.createElement("button"); reset.textContent = tr("Reset to defaults");
     reset.classList.add("reset-button");
@@ -2542,6 +2800,7 @@
       clearPresetState();
       if (borderImageButton) borderImageButton.textContent = tr("Upload image");
       syncTextImageControls();
+      syncPillarControls();
       recordSettingsHistory(true);
       persistCurrentSettings();
       syncBorderControls();
@@ -2624,7 +2883,10 @@
         return e;
       }
     };
-    const snapshot = () => ({ ...Object.fromEntries(UI.map(u => [u.k, CFG[u.k]])), borderImage: CFG.borderImage, image: CFG.image });
+    const snapshot = () => ({
+      ...Object.fromEntries(UI.map(u => [u.k, CFG[u.k]])),
+      borderImage: CFG.borderImage, image: CFG.image, pillarImage: CFG.pillarImage
+    });
     const settingsHistory = [snapshot()];
     const maxHistoryEntries = 100;
     let historyIndex = 0;
@@ -2698,8 +2960,13 @@
         && (!obj.image || /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.image))) {
         CFG.image = obj.image;
       }
+      if (typeof obj.pillarImage === "string"
+        && (!obj.pillarImage || /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i.test(obj.pillarImage))) {
+        CFG.pillarImage = obj.pillarImage;
+      }
       syncTextImageControls();
       syncBorderControls();
+      syncPillarControls();
       updateSceneSettings();
       scheduleFrame();
       const rebuildComplete = rebuild();
@@ -2771,7 +3038,8 @@
     function updatePresetState() {
       if (!loadedPresetName || !loadedPresetSettings) return;
       const matches = UI.every(u => CFG[u.k] === loadedPresetSettings[u.k])
-        && CFG.image === (loadedPresetSettings.image || "");
+        && CFG.image === (loadedPresetSettings.image || "")
+        && CFG.pillarImage === (loadedPresetSettings.pillarImage || "");
       sel.value = matches ? loadedPresetName : "";
       if (!matches) {
         status.textContent = "";
@@ -2937,6 +3205,7 @@
       }
       if (typeof ImageDecoder !== "function" && (
         isAnimatedImageSource(exportSettings.image)
+        || (exportSettings.pillarEnabled && isAnimatedImageSource(exportSettings.pillarImage))
         || (exportSettings.borderMode !== "none" && exportSettings.borderStyle === "image"
           && isAnimatedImageSource(exportSettings.borderImage))
       )) {
@@ -2990,6 +3259,9 @@
         if (exportSettings.borderMode !== "none" && exportSettings.borderStyle === "image" && exportSettings.borderImage) {
           await decodeBorderImageSource(exportSettings.borderImage);
         }
+        if (exportSettings.pillarEnabled && exportSettings.pillarImage) {
+          await decodePillarImageSource(exportSettings.pillarImage);
+        }
         checkCanceled();
         const pixelScale = Math.min(2, maxDimension / Math.max(availableWidth, availableHeight));
         const { width: sceneWidth, height: sceneHeight, offsetY, scale: sceneScale } =
@@ -3005,7 +3277,9 @@
         const exportImage = exportSettings.image ? await decodeImageSource(exportSettings.image) : null;
         const exportBorderImage = exportSettings.borderMode !== "none" && exportSettings.borderStyle === "image"
           && exportSettings.borderImage ? await decodeBorderImageSource(exportSettings.borderImage) : null;
-        exportRenderer.setScene(createRenderScene(exportSettings, exportRows, exportImage, exportBorderImage));
+        const exportPillarImage = exportSettings.pillarEnabled && exportSettings.pillarImage
+          ? await decodePillarImageSource(exportSettings.pillarImage) : null;
+        exportRenderer.setScene(createRenderScene(exportSettings, exportRows, exportImage, exportBorderImage, exportPillarImage));
         const frames = [];
         const frameDurations = Array.from({ length: frameCount }, (_, i) =>
           Math.round((i + 1) * periodMs / frameCount) - Math.round(i * periodMs / frameCount));
