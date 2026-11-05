@@ -162,7 +162,7 @@
       top: 0;
       border-radius: 50%;
       background-repeat: no-repeat;
-      background-size: 100% 100%;
+      background-size: cover;
       pointer-events: none;
       backface-visibility: visible;
     }
@@ -703,7 +703,7 @@
       borderBottomSpacing: 8,
       borderRotation: "withText",
       pillarEnabled: false,
-      pillarThickness: 12,
+      pillarThickness: 200,
       pillarLength: 300,
       pillarVerticalPosition: 0,
       pillarColor: "#f2b45a",
@@ -769,8 +769,8 @@
         ]
       },
       { k: "pillarEnabled", label: "Show pillar", category: "Pillar", type: "bool", rebuild: true },
-      { k: "pillarThickness", label: "Pillar thickness", category: "Pillar", min: 1, max: 96, step: 1, rebuild: true },
-      { k: "pillarLength", label: "Pillar length", category: "Pillar", min: 1, max: 1000, step: 1, rebuild: true },
+      { k: "pillarThickness", label: "Pillar thickness", category: "Pillar", min: 1, max: 800, step: 1, rebuild: true },
+      { k: "pillarLength", label: "Pillar length", category: "Pillar", min: 1, max: 800, step: 1, rebuild: true },
       { k: "pillarVerticalPosition", label: "Pillar vertical position", category: "Pillar", min: -500, max: 500, step: 1, rebuild: true },
       { k: "pillarRotation", label: "Rotate pillar", category: "Pillar", type: "bool" },
       { k: "pillarReverseRotation", label: "Reverse rotation", category: "Pillar", type: "bool" },
@@ -1388,6 +1388,7 @@
         uniform float uWarpAverage;
         uniform float uWarpBaseline;
         uniform float uRowY;
+        uniform mediump int uLayer;
         varying vec2 vTexCoord;
         varying vec2 vObjectTexCoord;
         varying float vOpacity;
@@ -1424,7 +1425,13 @@
           float py = uViewport.y * 0.5 + (screenY * perspectiveScale + uOffsetY) * uOutputScale;
           float viewDistance = denominator;
           float depth = ((uFar + 1.0) * viewDistance - 2.0 * uFar) / ((uFar - 1.0) * viewDistance);
-          gl_Position = vec4(px / uViewport.x * 2.0 - 1.0, 1.0 - py / uViewport.y * 2.0, depth, 1.0);
+          float clipW = uLayer == 3 ? denominator : 1.0;
+          gl_Position = vec4(
+            (px / uViewport.x * 2.0 - 1.0) * clipW,
+            (1.0 - py / uViewport.y * 2.0) * clipW,
+            depth * clipW,
+            clipW
+          );
           float normalizedDepth = clamp((rotatedZ / uRadius + 1.0) * 0.5, 0.0, 1.0);
           vTexCoord = vec2(sourceU, aTexCoord.y);
           vObjectTexCoord = aTexCoord;
@@ -1436,7 +1443,7 @@
         uniform sampler2D uContentTexture;
         uniform sampler2D uBorderTexture;
         uniform sampler2D uPillarTexture;
-        uniform int uLayer;
+        uniform mediump int uLayer;
         uniform int uPattern;
         uniform int uPillarImage;
         uniform float uPatternScale;
@@ -1560,18 +1567,33 @@
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
         return { vertexBuffer, indexBuffer, count: indices.length };
       };
-      const createPillarMesh = (thickness, length, verticalPosition) => {
+      const createPillarMesh = (thickness, length, verticalPosition, image) => {
         const segments = 64;
         const vertices = new Float32Array(((segments + 1) * 2 + 2) * 5);
         const indices = new Uint16Array(segments * 12);
         const top = verticalPosition - length / 2, bottom = verticalPosition + length / 2;
         const centerZ = 0, tubeRadius = thickness / 2;
+        const imageWidth = image ? image.width || image.naturalWidth : 0;
+        const imageHeight = image ? image.height || image.naturalHeight : 0;
+        const surfaceAspectRatio = Math.PI * thickness / length;
+        const imageAspectRatio = imageWidth / imageHeight;
+        let uStart = 0, uEnd = 1, vTop = 1, vBottom = 0;
+        if (imageAspectRatio > surfaceAspectRatio) {
+          const visibleWidth = surfaceAspectRatio / imageAspectRatio;
+          uStart = (1 - visibleWidth) / 2;
+          uEnd = (1 + visibleWidth) / 2;
+        } else if (imageAspectRatio > 0) {
+          const visibleHeight = imageAspectRatio / surfaceAspectRatio;
+          vTop = (1 + visibleHeight) / 2;
+          vBottom = (1 - visibleHeight) / 2;
+        }
         for (let i = 0; i <= segments; i++) {
           const angle = i * Math.PI * 2 / segments;
           const x = tubeRadius * Math.sin(angle);
           const z = centerZ + tubeRadius * Math.cos(angle);
           const offset = i * 10;
-          vertices.set([x, top, z, i / segments, 1, x, bottom, z, i / segments, 0], offset);
+          const u = uStart + i / segments * (uEnd - uStart);
+          vertices.set([x, top, z, u, vTop, x, bottom, z, u, vBottom], offset);
           if (i < segments) {
             const index = i * 2;
             const start = i * 6;
@@ -1617,7 +1639,7 @@
           borderTexture = scene.borderCanvas ? createTexture(scene.borderCanvas) : contentTexture;
           pillarTexture = scene.pillar?.image ? createTexture(scene.pillar.image, false) : null;
           pillarMesh = scene.pillar ? createPillarMesh(
-            scene.pillar.thickness, scene.pillar.length, scene.pillar.verticalPosition
+            scene.pillar.thickness, scene.pillar.length, scene.pillar.verticalPosition, scene.pillar.image
           ) : null;
           sceneMeshes = scene.rows.map(row => ({
             ...row,

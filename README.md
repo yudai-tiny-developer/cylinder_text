@@ -69,7 +69,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Pillar*
 | Pillar length | Sets the pillar length from 1 to 1000 pixels. |
 | Pillar vertical position | Moves the pillar up or down by up to 500 pixels; positive values move it down. |
 | Pillar color | Sets the pillar color when no image is selected. |
-| Pillar image | Wraps an uploaded PNG, JPEG, WebP, or GIF image around the pillar. |
+| Pillar image | Wraps an uploaded PNG, JPEG, WebP, or GIF image around the pillar, cropping it as needed to preserve its aspect ratio. |
 | Rotate pillar | Chooses whether the center pillar spins on its own axis or remains at a fixed angle. |
 | Reverse rotation | Reverses the pillar's self-rotation direction relative to the text. Shown when pillar rotation is enabled. |
 | Rotation speed | Rotation in degrees per second. Negative values reverse direction. |
