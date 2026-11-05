@@ -707,6 +707,7 @@
       pillarLength: 300,
       pillarVerticalPosition: 0,
       pillarColor: "#f2b45a",
+      pillarImageMode: "flat",
       pillarRotation: true,
       pillarReverseRotation: false,
       bgColor: "#0f1b30",     // Background color.
@@ -773,6 +774,12 @@
       { k: "pillarLength", label: "Pillar length", category: "Pillar", min: 1, max: 800, step: 1, rebuild: true },
       { k: "pillarVerticalPosition", label: "Pillar vertical position", category: "Pillar", min: -500, max: 500, step: 1, rebuild: true },
       { k: "pillarRotation", label: "Rotate pillar", category: "Pillar", type: "bool" },
+      {
+        k: "pillarImageMode", label: "Pillar image display", category: "Pillar", type: "select", rebuild: true, options: [
+          { label: "Wrap around pillar", value: "wrap" },
+          { label: "Show flat image", value: "flat" }
+        ]
+      },
       { k: "pillarReverseRotation", label: "Reverse rotation", category: "Pillar", type: "bool" },
       { k: "textColor", label: "Text color", category: "Colors", type: "color" },
       { k: "strokeColor", label: "Outline color", category: "Colors", type: "color" },
@@ -857,6 +864,7 @@
       "Upload image": "画像をアップロード", "Change image": "画像を変更",
       "Border width": "枠の太さ", "Top spacing": "上の余白", "Bottom spacing": "下の余白", "Border rotation": "枠の回転", "Rotate with text": "文字列と一緒に回転", "Do not rotate": "回転しない",
       "Text appearance": "文字の見た目", "Pillar": "柱", "Show pillar": "柱を表示", "Pillar thickness": "柱の太さ", "Pillar length": "柱の長さ", "Pillar vertical position": "柱の上下位置", "Pillar image": "柱の画像",
+      "Pillar image display": "柱画像の表示", "Wrap around pillar": "柱に巻き付ける", "Show flat image": "平面画像を表示",
       "Pillar color": "柱の色", "Rotate pillar": "柱を回転", "Reverse rotation": "逆回転",
       "Colors": "色", "Motion and display": "円柱の動きと表示",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
@@ -1567,7 +1575,31 @@
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
         return { vertexBuffer, indexBuffer, count: indices.length };
       };
-      const createPillarMesh = (thickness, length, verticalPosition, image) => {
+      const createPillarMesh = (thickness, length, verticalPosition, image, imageMode) => {
+        if (image && imageMode === "flat") {
+          const imageWidth = image.width || image.naturalWidth;
+          const imageHeight = image.height || image.naturalHeight;
+          const imageAspectRatio = imageWidth / imageHeight;
+          const boundsAspectRatio = thickness / length;
+          const width = imageAspectRatio > boundsAspectRatio ? thickness : length * imageAspectRatio;
+          const height = imageAspectRatio > boundsAspectRatio ? thickness / imageAspectRatio : length;
+          const top = verticalPosition - height / 2, bottom = verticalPosition + height / 2;
+          const halfWidth = width / 2;
+          const vertices = new Float32Array([
+            -halfWidth, top, 0.01, 0, 1,
+            halfWidth, top, 0.01, 1, 1,
+            -halfWidth, bottom, 0.01, 0, 0,
+            halfWidth, bottom, 0.01, 1, 0
+          ]);
+          const indices = new Uint16Array([0, 2, 1, 1, 2, 3]);
+          const vertexBuffer = gl.createBuffer(), indexBuffer = gl.createBuffer();
+          if (!vertexBuffer || !indexBuffer) throw new Error("Could not create WebGL pillar buffers");
+          gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+          gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+          gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+          return { vertexBuffer, indexBuffer, count: indices.length };
+        }
         const segments = 64;
         const vertices = new Float32Array(((segments + 1) * 2 + 2) * 5);
         const indices = new Uint16Array(segments * 12);
@@ -1639,7 +1671,8 @@
           borderTexture = scene.borderCanvas ? createTexture(scene.borderCanvas) : contentTexture;
           pillarTexture = scene.pillar?.image ? createTexture(scene.pillar.image, false) : null;
           pillarMesh = scene.pillar ? createPillarMesh(
-            scene.pillar.thickness, scene.pillar.length, scene.pillar.verticalPosition, scene.pillar.image
+            scene.pillar.thickness, scene.pillar.length, scene.pillar.verticalPosition,
+            scene.pillar.image, scene.pillar.imageMode
           ) : null;
           sceneMeshes = scene.rows.map(row => ({
             ...row,
@@ -2048,7 +2081,8 @@
           thickness: settings.pillarThickness,
           length: settings.pillarLength,
           verticalPosition: settings.pillarVerticalPosition,
-          image: pillarImage
+          image: pillarImage,
+          imageMode: settings.pillarImageMode
         } : null,
         atlasScale: scale, maxExtent: Math.max(
           Math.abs(extentTop),
@@ -2208,6 +2242,10 @@
         el.style.height = settings.pillarLength + "px";
         el.style.backgroundColor = settings.pillarColor;
         if (settings.pillarImage) el.style.backgroundImage = `url("${settings.pillarImage}")`;
+        if (settings.pillarImage && settings.pillarImageMode === "flat") {
+          el.style.borderRadius = "0";
+          el.style.backgroundSize = "contain";
+        }
         ring.appendChild(el);
         pillarData = { el };
       }
@@ -2681,7 +2719,8 @@
       if (fontLoadButton) wrap.append(fontLoadButton);
       if (fontLoadStatus) wrap.append(fontLoadStatus);
       if (out) wrap.append(out);
-      fields.appendChild(wrap);
+      if (u.k === "pillarImageMode") fields.insertBefore(wrap, inputs.pillarRotation.wrap);
+      else fields.appendChild(wrap);
       if (u.k === "pillarRotation") {
         const imageField = document.createElement("div");
         pillarImageField = imageField;
@@ -2787,12 +2826,14 @@
     function syncPillarControls() {
       const disabled = !CFG.pillarEnabled;
       const showRotation = !disabled && Boolean(CFG.pillarImage);
-      for (const k of ["pillarThickness", "pillarLength", "pillarVerticalPosition", "pillarColor", "pillarRotation", "pillarReverseRotation"]) {
+      for (const k of ["pillarThickness", "pillarLength", "pillarVerticalPosition", "pillarImageMode", "pillarColor", "pillarRotation", "pillarReverseRotation"]) {
         const { inp, out, wrap } = inputs[k];
         const imageColor = k === "pillarColor" && Boolean(CFG.pillarImage);
-        inp.disabled = disabled || imageColor;
+        const imageMode = k === "pillarImageMode";
+        inp.disabled = disabled || imageColor || (imageMode && !CFG.pillarImage);
         if (out) out.disabled = disabled;
         wrap.hidden = disabled || imageColor
+          || (imageMode && !CFG.pillarImage)
           || (k === "pillarRotation" && !showRotation)
           || (k === "pillarReverseRotation" && (!showRotation || !CFG.pillarRotation));
       }

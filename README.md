@@ -11,7 +11,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Text and outline colors, background color, and outline width
 - Optional top-only, bottom-only, or top-and-bottom borders around all rows or each individual row, with independently adjustable top and bottom spacing and customizable color, dotted, dashed, solid, double, or repeating image-panel styles
 - Optional border rotation synchronized with the text
-- Optional center pillar with adjustable thickness, length, color or uploaded image, and optional self-rotation synchronized with the text
+- Optional center pillar with adjustable thickness, length, color or uploaded image, with a choice to wrap the image around the pillar or show it flat, and optional self-rotation synchronized with the text
 - Adjustable vertical position for the center pillar
 - Optional center-pillar rotation in the opposite direction from the text
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
@@ -69,7 +69,8 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Pillar*
 | Pillar length | Sets the pillar length from 1 to 1000 pixels. |
 | Pillar vertical position | Moves the pillar up or down by up to 500 pixels; positive values move it down. |
 | Pillar color | Sets the pillar color when no image is selected. |
-| Pillar image | Wraps an uploaded PNG, JPEG, WebP, or GIF image around the pillar, cropping it as needed to preserve its aspect ratio. |
+| Pillar image | Adds an uploaded PNG, JPEG, WebP, or GIF image to the pillar. |
+| Pillar image display | Wraps the image around the pillar, cropping it as needed to preserve its aspect ratio, or shows the full image as a flat panel fitted within the pillar dimensions. |
 | Rotate pillar | Chooses whether the center pillar spins on its own axis or remains at a fixed angle. |
 | Reverse rotation | Reverses the pillar's self-rotation direction relative to the text. Shown when pillar rotation is enabled. |
 | Rotation speed | Rotation in degrees per second. Negative values reverse direction. |
