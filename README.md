@@ -78,7 +78,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Pillar*
 | Tilt (side) | Tilts the cylinder horizontally. |
 | Perspective | Perspective distance; lower values make depth effects stronger without changing the cylinder's apparent radius. |
 | Shrink distant text | Reduces the size of characters on the far side. |
-| Distant opacity | Minimum opacity for characters on the far side. |
+| Distant opacity | Keeps the front half fully opaque and sets the minimum opacity for characters at the farthest point on the back half. |
 | Radius | Cylinder radius in pixels. |
 | Font size | Character font size in pixels. |
 | Letter spacing | Spacing between characters in em units. |
