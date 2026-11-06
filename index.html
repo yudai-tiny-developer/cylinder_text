@@ -87,10 +87,6 @@
       white-space: nowrap;
     }
 
-    .stage {
-      transform-origin: center;
-    }
-
     .scene-renderer {
       position: absolute;
       inset: 0;
@@ -99,72 +95,9 @@
       pointer-events: none;
     }
 
-    body:not(.webgl-rendered) .scene-renderer {
-      display: none;
-    }
-
-    .webgl-rendered .stage {
-      display: none;
-    }
-
-    .ring {
-      position: relative;
-      width: 0;
-      height: 0;
-      transform-style: preserve-3d;
-    }
-
-    .row {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 0;
-      height: 0;
-      transform-style: preserve-3d;
-    }
-
-    .ch {
-      position: absolute;
-      left: 0;
-      top: 0;
-      white-space: pre;
-      line-height: 1;
-      color: var(--tc, var(--ink));
-      -webkit-text-stroke: var(--sw, 0px) var(--sc, transparent);
-      paint-order: stroke fill;
-      backface-visibility: visible;
-    }
-
-    .ch:not(.image) {
-      padding: var(--sw, 0px);
-    }
-
-    .border {
-      position: absolute;
-      box-sizing: border-box;
-      border: var(--bw, 2px) var(--bs, solid) var(--bc);
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    .border-image-panel {
-      position: absolute;
-      top: 0;
-      left: 0;
-      pointer-events: none;
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
-    }
-
-    .pillar-panel {
-      position: absolute;
-      left: 0;
-      top: 0;
-      border-radius: 50%;
-      background-repeat: no-repeat;
-      background-size: cover;
-      pointer-events: none;
-      backface-visibility: visible;
+    .graphics-hint.error {
+      color: var(--status-error);
+      opacity: 1;
     }
 
     /* ===== Control panel ===== */
@@ -649,20 +582,12 @@
       outline-offset: 2px;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .ch {
-        transition: none;
-      }
-    }
   </style>
 </head>
 
 <body>
   <main class="scene">
     <canvas class="scene-renderer" id="scene-renderer" aria-hidden="true"></canvas>
-    <div class="stage" id="stage">
-      <div class="ring" id="ring"></div>
-    </div>
   </main>
   <p class="graphics-hint" id="graphics-hint">For the smooth WebGL renderer, enable hardware acceleration in your browser settings.</p>
   <div class="text-dock" id="text-dock" hidden></div>
@@ -855,6 +780,7 @@
     const JA_TRANSLATIONS = {
       "Settings": "詳細設定", "Privacy Policy": "プライバシーポリシー", "Terms of Use": "利用規約",
       "For the smooth WebGL renderer, enable hardware acceleration in your browser settings.": "滑らかなWebGL描画のため、ブラウザーのグラフィックアクセラレーションを有効にしてください。",
+      "WebGL is unavailable. Check that your browser supports WebGL and that it is enabled in its settings.": "WebGLを利用できません。お使いのブラウザーがWebGLに対応しているか、設定で無効になっていないか確認してください。",
       "Text": "文字列", "Separator": "区切り文字", "Font": "フォント", "Weight": "太さ",
       "Clear image": "画像をクリア",
       "Text color": "文字色", "Outline color": "縁取りの色", "Outline width": "縁取りの太さ", "Background": "背景色",
@@ -924,10 +850,6 @@
     function cacheDecodedImageBlob(src, image, objectUrl) {
       cacheDecodedImageSource(src, image);
       decodedImageObjectUrl = objectUrl;
-    }
-
-    function getImageRenderSource(src) {
-      return src === decodedImageSource && decodedImageObjectUrl ? decodedImageObjectUrl : src;
     }
 
     function isAnimatedImageSource(src) {
@@ -1365,10 +1287,9 @@
     $("panel").firstElementChild.textContent = tr("Settings");
     $("policy-link").textContent = tr("Privacy Policy");
     $("terms-link").textContent = tr("Terms of Use");
-    $("graphics-hint").textContent = tr("For the smooth WebGL renderer, enable hardware acceleration in your browser settings.");
-    const ring = $("ring"), stage = $("stage"), scene = document.querySelector(".scene"), panelEl = $("panel");
+    const scene = document.querySelector(".scene"), panelEl = $("panel");
     const ctx = document.createElement("canvas").getContext("2d");
-    let rowsData = [], borderData = [], pillarData = null, spin = 0, last = performance.now(), sceneLayout = null;
+    let rowsData = [], spin = 0, last = performance.now(), sceneLayout = null;
     let rebuildRequest = 0, frameRequest = 0, textColorsPending = false;
 
     const BUILD_BATCH_SIZE = 256;
@@ -2107,17 +2028,21 @@
     let webglRenderer = null;
     try {
       webglRenderer = createWebGLRenderer($("scene-renderer"));
-      if (webglRenderer) document.body.classList.add("webgl-rendered");
     } catch (error) {
       console.error("Could not initialize the WebGL renderer", error);
     }
+    const graphicsHint = $("graphics-hint");
+    graphicsHint.textContent = tr(webglRenderer
+      ? "For the smooth WebGL renderer, enable hardware acceleration in your browser settings."
+      : "WebGL is unavailable. Check that your browser supports WebGL and that it is enabled in its settings.");
+    if (!webglRenderer) graphicsHint.classList.add("error");
 
     async function build(request = ++rebuildRequest) {
+      if (!webglRenderer) return;
       const settings = { ...CFG };
-      ring.innerHTML = ""; rowsData = []; borderData = []; pillarData = null;
+      rowsData = [];
       const { radius: R, fontSize: fs, letterSpacing: ls, fontWeight: fw } = settings;
       const family = familyCss(settings.fontFamily);
-      ring.style.fontFamily = family;
       ctx.font = `${fw} ${fs}px ${family}`;
 
       const imageMode = Boolean(settings.image && decodedImage && decodedImageSource === settings.image);
@@ -2159,115 +2084,18 @@
           if (request !== rebuildRequest) return;
         }
       }
-      let builtCount = 0;
-      let pendingTarget = null;
-      let pendingElements = document.createDocumentFragment();
-      let pendingCount = 0;
-      const flushBatch = () => {
-        if (!pendingCount) return;
-        pendingTarget.appendChild(pendingElements);
-        pendingElements = document.createDocumentFragment();
-        pendingCount = 0;
-      };
-      const appendInBatches = (target, element) => {
-        if (pendingTarget && pendingTarget !== target) flushBatch();
-        pendingTarget = target;
-        pendingElements.appendChild(element);
-        pendingCount++;
-        if (++builtCount % BUILD_BATCH_SIZE === 0) {
-          flushBatch();
-          return yieldBuild().then(() => request === rebuildRequest);
-        }
-        return true;
-      };
       const borderImage = settings.borderMode !== "none" && settings.borderStyle === "image" && settings.borderImage
         ? await decodeBorderImageSource(settings.borderImage) : null;
       const pillarImage = settings.pillarEnabled && settings.pillarImage
         ? await decodePillarImageSource(settings.pillarImage) : null;
       if (request !== rebuildRequest) return;
-      const borderImageSize = borderImage ? getBorderImageDisplaySize(settings, borderImage) : null;
-      if (!webglRenderer && settings.borderMode !== "none") {
-        const rowHalfHeight = imageSize ? imageSize.height / 2 : getTextHalfHeight(settings);
-        const topOffset = rowHalfHeight + settings.borderTopSpacing;
-        const bottomOffset = rowHalfHeight + settings.borderBottomSpacing;
-        const allRows = settings.borderMode === "all" || settings.borderMode === "allTop" || settings.borderMode === "allBottom";
-        const drawTop = settings.borderMode !== "allBottom" && settings.borderMode !== "rowsBottom";
-        const drawBottom = settings.borderMode !== "allTop" && settings.borderMode !== "rowsTop";
-        const bounds = allRows
-          ? [{ top: ys[0] - topOffset, bottom: ys[ys.length - 1] + bottomOffset, topRow: 0, bottomRow: ys.length - 1 }]
-          : ys.map((y, rowIndex) => ({ top: y - topOffset, bottom: y + bottomOffset, topRow: rowIndex, bottomRow: rowIndex }));
-        for (const bound of bounds) {
-          const positions = [];
-          if (drawTop) positions.push([bound.top, bound.topRow]);
-          if (drawBottom) positions.push([bound.bottom, bound.bottomRow]);
-          for (const [y, row] of positions) {
-            if (borderImageSize) {
-              const angleStep = Math.PI * 2 / borderImageSize.count;
-              for (let i = 0; i < borderImageSize.count; i++) {
-                if (request !== rebuildRequest) return;
-                const border = document.createElement("div");
-                border.className = "border-image-panel";
-                border.setAttribute("aria-hidden", "true");
-                border.style.width = borderImageSize.width + "px";
-                border.style.height = borderImageSize.height + "px";
-                border.style.left = -borderImageSize.width / 2 + "px";
-                border.style.top = -borderImageSize.height / 2 + "px";
-                border.style.backgroundImage = `url("${settings.borderImage}")`;
-                const appended = appendInBatches(ring, border);
-                if (appended !== true && !await appended) return;
-                borderData.push({ el: border, y, row, angle: (i - (borderImageSize.count - 1) / 2) * angleStep });
-              }
-              continue;
-            }
-            const border = document.createElement("div");
-            border.classList.add("border");
-            border.setAttribute("aria-hidden", "true");
-            border.style.left = -R + "px";
-            border.style.top = -R + "px";
-            border.style.width = 2 * R + "px";
-            border.style.height = 2 * R + "px";
-            border.style.transform = `translateY(${y}px) rotateX(90deg)`;
-            const appended = appendInBatches(ring, border);
-            if (appended !== true && !await appended) return;
-            borderData.push({ el: border, y, row });
-          }
-        }
-      }
-
-      if (settings.pillarEnabled && !webglRenderer) {
-        const el = document.createElement("div");
-        el.className = "pillar-panel";
-        el.setAttribute("aria-hidden", "true");
-        el.style.width = settings.pillarThickness + "px";
-        el.style.height = settings.pillarLength + "px";
-        el.style.backgroundColor = settings.pillarColor;
-        if (settings.pillarImage) el.style.backgroundImage = `url("${settings.pillarImage}")`;
-        if (settings.pillarImage && settings.pillarImageMode === "flat") {
-          el.style.borderRadius = "0";
-          el.style.backgroundSize = "contain";
-        }
-        ring.appendChild(el);
-        pillarData = { el };
-      }
 
       if (imageMode) {
         const chars = [];
         for (let copy = 0; copy < imageSize.count; copy++) {
           const copyOffset = (copy - (imageSize.count - 1) / 2) * imageSize.width;
           if (request !== rebuildRequest) return;
-          let el;
-          if (!webglRenderer) {
-            el = document.createElement("div");
-            el.className = "ch image";
-            el.setAttribute("aria-hidden", "true");
-            el.style.width = imageSize.width + "px";
-            el.style.height = imageSize.height + "px";
-            el.style.backgroundImage = `url("${getImageRenderSource(settings.image)}")`;
-            el.style.backgroundSize = `${imageSize.width}px ${imageSize.height}px`;
-            const appended = appendInBatches(ring, el);
-            if (appended !== true && !await appended) return;
-          }
-          chars.push({ el, image: true, a: copyOffset / R });
+          chars.push({ image: true, a: copyOffset / R });
         }
         rowsData.push({ index: 0, y: 0, chars, phase: 0 });
       } else for (let r = 0; r < lines.length; r++) {
@@ -2276,32 +2104,13 @@
         const n = settings.repeat ? Math.max(1, Math.round(C / unitW)) : 1;
         const k = settings.repeat ? C / (n * unitW) : 1;   // Adjust spacing to fit the circumference exactly.
         const y = ys[r];
-        let row;
-        if (!webglRenderer) {
-          row = document.createElement("div");
-          row.className = "row";
-          row.style.transform = `translateY(${y}px)`;
-          flushBatch();
-          ring.appendChild(row);
-          pendingTarget = row;
-        }
         const chars = [];
         let cum = start;
         for (let i = 0; i < n; i++) {
           for (let j = 0; j < unit.length; j++) {
             if (request !== rebuildRequest) return;
             const ch = unit[j];
-            let el;
-            if (!webglRenderer) {
-              el = document.createElement("span");
-              el.className = "ch";
-              el.textContent = ch === " " ? "\u00a0" : ch;
-              el.style.fontSize = fs + "px";
-              el.style.fontWeight = fw;
-              const appended = appendInBatches(row, el);
-              if (appended !== true && !await appended) return;
-            }
-            chars.push({ el, text: ch, a: (cum + widths[j] / 2) * k / R });
+            chars.push({ text: ch, a: (cum + widths[j] / 2) * k / R });
             cum += widths[j];
           }
         }
@@ -2312,17 +2121,15 @@
           if (request !== rebuildRequest) return;
         }
       }
-      flushBatch();
-      if (webglRenderer) {
-        const scene = createRenderScene(settings, rowsData, decodedImage, borderImage, pillarImage);
-        if (request !== rebuildRequest) return;
-        webglRenderer.setScene(scene);
-      }
+      const renderScene = createRenderScene(settings, rowsData, decodedImage, borderImage, pillarImage);
+      if (request !== rebuildRequest) return;
+      webglRenderer.setScene(renderScene);
       updateSceneSettings();
     }
 
     // Rebuild the layout after fonts load to ensure accurate text-width measurements.
     function rebuild() {
+      if (!webglRenderer) return Promise.resolve();
       const request = ++rebuildRequest;
       const spec = `${CFG.fontWeight} ${CFG.fontSize}px ${familyCss(CFG.fontFamily)}`;
       const fontLoading = document.fonts
@@ -2357,8 +2164,6 @@
       return referenceDistance * Math.sqrt(cameraDistance ** 2 - radius ** 2)
         / Math.sqrt(referenceDistance ** 2 - radius ** 2);
     };
-    const perspectiveOutputScale = settings => perspectiveFocalLength(settings) / persp(settings);
-
     function getSceneLayout(settings, availableWidth, availableHeight) {
       const R = settings.radius, fs = settings.fontSize;
       const P = persp(settings);
@@ -2417,27 +2222,10 @@
     }
 
     function updateSceneSettings() {
-      stage.style.perspective = persp(CFG) + "px";
       const sceneBounds = scene.getBoundingClientRect();
       sceneLayout = getSceneLayout(CFG, sceneBounds.width, sceneBounds.height);
-      const offsetY = -sceneLayout.offsetY;
-      stage.style.transform = `scale(${perspectiveOutputScale(CFG)}) translateY(${offsetY}px)`;
-      ring.style.transform = `rotateZ(${CFG.tiltZ}deg) rotateX(${-CFG.tiltX}deg)`;
       document.body.style.background = CFG.bgColor;
-      ring.style.setProperty("--tc", CFG.textColor);
-      ring.style.setProperty("--sc", CFG.strokeColor);
-      ring.style.setProperty("--sw", CFG.strokeWidth + "px");
-      ring.style.setProperty("--bc", CFG.borderColor);
-      ring.style.setProperty("--bs", CFG.borderStyle);
-      ring.style.setProperty("--bw", CFG.borderWidth + "px");
-      if (CFG.borderRotation === "fixed") {
-        borderData.forEach(({ el, y, angle }) => {
-          el.style.transform = angle === undefined
-            ? `translateY(${y}px) rotateX(90deg)`
-            : `translateY(${y}px) rotateY(${angle}rad) translateZ(${CFG.radius}px)`;
-        });
-      }
-      scheduleFrame();
+      if (webglRenderer) scheduleFrame();
     }
 
     function hasAnimatedImageSources() {
@@ -2464,52 +2252,16 @@
     }
 
     function renderSceneFrame() {
-      if (document.hidden) return;
-      const R = CFG.radius, rad = Math.PI / 180;
-      const tx = -CFG.tiltX * rad, cosT = Math.cos(tx), sinT = Math.sin(tx);
-      if (webglRenderer) {
-        const bounds = scene.getBoundingClientRect();
-        const layout = sceneLayout || getSceneLayout(CFG, bounds.width, bounds.height);
-        const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
-        webglRenderer.resize(bounds.width, bounds.height, pixelRatio);
-        webglRenderer.render(CFG, spin, pixelRatio * layout.scale, -layout.offsetY);
-      } else {
-        if (pillarData) {
-          pillarData.el.style.backgroundColor = CFG.pillarColor;
-          pillarData.el.style.backgroundImage = CFG.pillarImage ? `url("${CFG.pillarImage}")` : "";
-          const pillarDirection = CFG.pillarReverseRotation ? -1 : 1;
-          const pillarRotation = CFG.pillarRotation ? pillarDirection * spin : 0;
-          pillarData.el.style.transform =
-            `translate(-50%,-50%) translateY(${CFG.pillarVerticalPosition}px) rotateY(${pillarRotation}rad)`;
-        }
-        if (CFG.borderRotation === "withText") {
-          borderData.forEach(({ el, y, row, angle }) => {
-            const direction = CFG.alternate && row % 2 ? -1 : 1;
-            el.style.transform = angle === undefined
-              ? `translateY(${y}px) rotateY(${direction * spin}rad) rotateX(90deg)`
-              : `translateY(${y}px) rotateY(${angle + direction * spin}rad) translateZ(${R}px)`;
-          });
-        }
-
-        rowsData.forEach((row, r) => {
-          const dir = CFG.alternate && r % 2 ? -1 : 1;
-          const base = dir * spin + row.phase;
-          for (const c of row.chars) {
-            const th = c.a + base;
-            // Depth after tilt is applied (1 = frontmost, 0 = farthest).
-            const z = row.y * sinT + R * Math.cos(th) * cosT;
-            const d = Math.max(0, Math.min(1, (z / R + 1) / 2));
-            const s = 1 - CFG.depthScale * (1 - d);
-            c.el.style.opacity = CFG.minOpacity + (1 - CFG.minOpacity) * Math.pow(d, CFG.fade);
-            const horizontalScale = CFG.mirrorFront && !c.image ? -s : s;
-            c.el.style.transform = `translate(-50%,-50%) rotateY(${th}rad) translateZ(${R}px) scale(${horizontalScale},${s})`;
-          }
-        });
-      }
+      if (document.hidden || !webglRenderer) return;
+      const bounds = scene.getBoundingClientRect();
+      const layout = sceneLayout || getSceneLayout(CFG, bounds.width, bounds.height);
+      const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+      webglRenderer.resize(bounds.width, bounds.height, pixelRatio);
+      webglRenderer.render(CFG, spin, pixelRatio * layout.scale, -layout.offsetY);
     }
 
     function scheduleFrame(continuing = false) {
-      if (document.hidden || frameRequest) return;
+      if (!webglRenderer || document.hidden || frameRequest) return;
       if (!continuing) last = performance.now();
       frameRequest = requestAnimationFrame(frame);
     }
@@ -3240,7 +2992,7 @@
 
     const yieldToBrowser = () => new Promise(resolve => setTimeout(resolve, 0));
 
-    async function drawExportFrame(context, width, height, pixelScale, sceneScale, offsetY, frameSpin, settings, rows, borders, signal, renderer) {
+    async function drawExportFrame(pixelScale, sceneScale, offsetY, frameSpin, settings, signal, renderer) {
       if (signal.aborted) throw new DOMException("Animated WebP export canceled", "AbortError");
       renderer.render(settings, frameSpin, pixelScale * sceneScale, -offsetY);
       await yieldToBrowser();
@@ -3289,7 +3041,6 @@
         phase: row.phase,
         chars: row.chars.map(({ text, a, image }) => ({ text, a, image }))
       }));
-      const exportBorders = [...new Map(borderData.map(({ y, row }) => [`${y}:${row}`, { y, row }])).values()];
       const { width: availableWidth, height: availableHeight } = scene.getBoundingClientRect();
       if (!HTMLCanvasElement.prototype.toBlob) {
         say("Animated WebP export is not supported by this browser", "error");
@@ -3348,9 +3099,9 @@
           Math.round((i + 1) * periodMs / frameCount) - Math.round(i * periodMs / frameCount));
         for (let i = 0; i < frameCount; i++) {
           await exportRenderer.setAnimationTime(Math.round(i * periodMs / frameCount));
-          await drawExportFrame(canvas, width, height, pixelScale, sceneScale, offsetY,
+          await drawExportFrame(pixelScale, sceneScale, offsetY,
             startSpin + Math.sign(exportSettings.speed) * Math.PI * 2 * i / frameCount,
-            exportSettings, exportRows, exportBorders, controller.signal, exportRenderer);
+            exportSettings, controller.signal, exportRenderer);
           const blob = await new Promise((resolve, reject) => {
             canvas.toBlob(image => image ? resolve(image) : reject(new Error("WebP frame encoding failed")), "image/webp", 0.95);
           });
