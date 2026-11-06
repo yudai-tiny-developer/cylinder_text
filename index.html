@@ -1361,7 +1361,7 @@
             depth * clipW,
             clipW
           );
-          float normalizedDepth = clamp(rotatedZ / uRadius + 1.0, 0.0, 1.0);
+          float normalizedDepth = clamp((cos(worldAngle) + 1.0) * 0.5, 0.0, 1.0);
           vTexCoord = vec2(sourceU, aTexCoord.y);
           vObjectTexCoord = aTexCoord;
           vOpacity = pow(normalizedDepth, 1.0);
