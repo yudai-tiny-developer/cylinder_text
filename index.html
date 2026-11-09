@@ -210,6 +210,34 @@
       grid-template-columns: 7.5em minmax(0, 1fr) auto;
     }
 
+    .f.radius-field {
+      grid-template-columns: 7.5em minmax(0, 1fr) 4.6em auto;
+    }
+
+    .auto-radius-button {
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--ink);
+      font: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .auto-radius-button[aria-pressed=true] {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: var(--panel);
+    }
+
+    @media (max-width: 420px) {
+      .f.radius-field {
+        grid-template-columns: 5em minmax(0, 1fr) 3.8em auto;
+        gap: 6px;
+      }
+    }
+
     .text-image-actions {
       display: grid;
       gap: 4px;
@@ -646,6 +674,7 @@
       minOpacity: 0.12,       // Opacity at the farthest point.
       fade: 1.5,              // Fade curve toward the back; larger values fade faster.
       mirrorFront: false,     // Mirror text on the front side and un-mirror the back side.
+      autoRadius: false,
       image: "",
       pillarImage: "",
       paused: false
@@ -712,6 +741,7 @@
       { k: "pillarColor", label: "Pillar color", category: "Colors", type: "color" },
       { k: "bgColor", label: "Background", category: "Colors", type: "color" },
       { k: "radius", label: "Radius", category: "Motion and display", min: 1, max: 400, step: 1, rebuild: true },
+      { k: "autoRadius", label: "Auto radius", category: "Motion and display", type: "bool" },
       { k: "speed", label: "Rotation speed", category: "Motion and display", min: -180, max: 180, step: 1 },
       { k: "tiltX", label: "Tilt (front/back)", category: "Motion and display", min: -90, max: 90, step: 1 },
       { k: "tiltZ", label: "Tilt (side)", category: "Motion and display", min: -90, max: 90, step: 1 },
@@ -795,6 +825,8 @@
       "Colors": "色", "Motion and display": "円柱の動きと表示",
       "Rotation speed": "回転速度", "Tilt (front/back)": "傾き（前後）", "Tilt (side)": "傾き（左右）", "Perspective": "遠近感",
       "Shrink distant text": "奥を縮小", "Distant opacity": "奥の濃さ", "Radius": "半径", "Font size": "文字サイズ", "Letter spacing": "字間",
+      "Auto": "自動設定", "Set radius based on the current text or image": "現在の文字列または画像を基準に半径を設定",
+      "Could not set radius automatically": "半径を自動設定できませんでした",
       "Row gap": "行の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "行ごとに逆回転",
       "Mirror front side": "鏡文字にする", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
       "Load installed fonts": "インストール済みフォントを読込", "Loaded": "読み込み済み",
@@ -2278,11 +2310,14 @@
     let pillarImageButton = null, clearPillarImageButton = null, pillarImageFile = null, pillarImageProgress = null, pillarImageField = null;
     let textImageButton = null, clearTextImageButton = null, textImageFile = null;
     let textImageUploadController = null;
+    let autoRadiusButton = null;
+    let autoRadiusRequest = 0;
     let pillarImageUploadController = null;
     let loadedPresetName = "";
     let loadedPresetSettings = null;
     let currentCategory = "";
     UI.forEach(u => {
+      if (u.k === "autoRadius") return;
       let textImageActions = null;
       let uploadProgress = null;
       if (u.category !== currentCategory) {
@@ -2295,6 +2330,7 @@
       const wrap = document.createElement("div");
       wrap.className = "f" + (u.type ? " wide" : "") + (u.k === "fontFamily" ? " font-field" : "");
       if (u.k === "borderStyle") wrap.classList.add("border-style-field");
+      if (u.k === "radius") wrap.classList.add("radius-field");
       const name = document.createElement(u.type === "color" ? "span" : "label");
       name.textContent = tr(u.label);
       if (u.type !== "color") name.htmlFor = "f-" + u.k;   // Do not associate color pickers with labels to avoid opening them across the whole row.
@@ -2318,6 +2354,23 @@
       else { inp.type = "range"; inp.min = u.min; inp.max = u.max; inp.step = u.step; inp.value = CFG[u.k]; out = document.createElement("input"); out.type = "number"; out.min = u.min; out.max = u.max; out.step = u.step; out.value = CFG[u.k]; out.setAttribute("aria-label", tr(u.label)); }
       let fontLoadButton = null;
       let fontLoadStatus = null;
+      if (u.k === "radius") {
+        autoRadiusButton = document.createElement("button");
+        autoRadiusButton.type = "button";
+        autoRadiusButton.className = "auto-radius-button";
+        autoRadiusButton.textContent = tr("Auto");
+        autoRadiusButton.title = tr("Set radius based on the current text or image");
+        autoRadiusButton.setAttribute("aria-label", autoRadiusButton.title);
+        autoRadiusButton.setAttribute("aria-pressed", "false");
+        autoRadiusButton.addEventListener("click", () => {
+          CFG.autoRadius = !CFG.autoRadius;
+          syncAutoRadiusControl();
+          recordSettingsHistory(true);
+          scheduleSettingsPersistence();
+          updatePresetState();
+          refreshAutomaticRadius();
+        });
+      }
       if (u.k === "fontFamily" && "queryLocalFonts" in window) {
         fontLoadButton = document.createElement("button");
         fontLoadButton.type = "button";
@@ -2403,6 +2456,7 @@
             CFG.image = await readImageFile(file, textImageUploadController.signal,
               (phase, loaded, total) => uploadProgress.update(phase, loaded, total));
             syncTextImageControls();
+            refreshAutomaticRadius();
             recordSettingsHistory(true);
             scheduleSettingsPersistence();
             updatePresetState();
@@ -2427,6 +2481,7 @@
           if (!CFG.image) return;
           CFG.image = "";
           syncTextImageControls();
+          refreshAutomaticRadius();
           recordSettingsHistory(true);
           scheduleSettingsPersistence();
           updatePresetState();
@@ -2447,6 +2502,9 @@
         if (u.k === "textColor" || u.k === "strokeColor") textColorsPending = true;
         updateSceneSettings();
         scheduleFrame();
+        if (["text", "fontFamily", "fontSize", "fontWeight", "letterSpacing", "separator", "repeat"].includes(u.k)) {
+          refreshAutomaticRadius();
+        }
         if (u.rebuild) (u.k === "fontFamily" || u.type === "text" ? rebuild() : build());
       });
       if (out) {
@@ -2471,6 +2529,7 @@
       if (fontLoadButton) wrap.append(fontLoadButton);
       if (fontLoadStatus) wrap.append(fontLoadStatus);
       if (out) wrap.append(out);
+      if (u.k === "radius") wrap.append(autoRadiusButton);
       if (u.k === "pillarImageMode") fields.insertBefore(wrap, inputs.pillarRotation.wrap);
       else fields.appendChild(wrap);
       if (u.k === "pillarRotation") {
@@ -2558,7 +2617,45 @@
         wrap.hidden = fieldDisabled;
       }
     }
+    function syncAutoRadiusControl() {
+      if (!autoRadiusButton) return;
+      autoRadiusButton.setAttribute("aria-pressed", String(CFG.autoRadius));
+    }
+    async function refreshAutomaticRadius() {
+      const request = ++autoRadiusRequest;
+      if (!CFG.autoRadius) return;
+      try {
+        const settings = { ...CFG };
+        let contentWidth;
+        if (settings.image) {
+          const image = decodedImageSource === settings.image && decodedImage
+            ? decodedImage : await decodeImageSource(settings.image);
+          const aspectRatio = (image.width || image.naturalWidth) / (image.height || image.naturalHeight);
+          contentWidth = settings.fontSize * 3 * aspectRatio;
+        } else {
+          const spec = `${settings.fontWeight} ${settings.fontSize}px ${familyCss(settings.fontFamily)}`;
+          if (document.fonts) await document.fonts.load(spec, settings.text + settings.separator).catch(() => { });
+          ctx.font = spec;
+          contentWidth = Math.max(1, ...settings.text.split("\n").map(line => {
+            const source = line === "" ? "" : line + (settings.repeat ? settings.separator : "");
+            let width = 0;
+            for (const character of source) {
+              width += ctx.measureText(character).width + settings.letterSpacing * settings.fontSize;
+            }
+            return width || 1;
+          }));
+        }
+        if (request !== autoRadiusRequest || !CFG.autoRadius) return;
+        inputs.radius.inp.value = Math.max(1, Math.min(400, Math.round(contentWidth / (2 * Math.PI))));
+        inputs.radius.inp.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch (error) {
+        if (request !== autoRadiusRequest) return;
+        console.error("Could not set radius automatically", error);
+        say("Could not set radius automatically", "error");
+      }
+    }
     syncTextImageControls();
+    syncAutoRadiusControl();
     function syncBorderControls() {
       const disabled = CFG.borderMode === "none";
       for (const k of ["borderColor", "borderStyle", "borderWidth", "borderTopSpacing", "borderBottomSpacing", "borderRotation"]) {
@@ -2615,6 +2712,8 @@
       clearPresetState();
       if (borderImageButton) borderImageButton.textContent = tr("Upload image");
       syncTextImageControls();
+      syncAutoRadiusControl();
+      refreshAutomaticRadius();
       syncPillarControls();
       recordSettingsHistory(true);
       persistCurrentSettings();
@@ -2763,6 +2862,10 @@
         if (typeof v !== t || (t === "number" && !isFinite(v))) continue;   // Ignore invalid values.
         if (t === "number") v = Math.min(u.max, Math.max(u.min, v));
         CFG[u.k] = v;
+        if (u.k === "autoRadius") {
+          syncAutoRadiusControl();
+          continue;
+        }
         const { inp, out } = inputs[u.k];
         if (u.type === "bool") inp.checked = v; else inp.value = v;
         if (out) out.value = v;
@@ -2785,6 +2888,7 @@
       updateSceneSettings();
       scheduleFrame();
       const rebuildComplete = rebuild();
+      refreshAutomaticRadius();
       if (recordHistory) recordSettingsHistory(true);
       return rebuildComplete.then(() => scheduleSettingsPersistence());
     }
@@ -3246,6 +3350,7 @@
       if (panelEl.open && !panelEl.contains(e.target)) panelEl.open = false;
     });
     rebuild();
+    refreshAutomaticRadius();
     scheduleFrame();
   </script>
 </body>
