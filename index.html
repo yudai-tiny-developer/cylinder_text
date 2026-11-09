@@ -2315,6 +2315,7 @@
     let textImageUploadController = null;
     let autoRadiusButton = null;
     let autoRadiusRequest = 0;
+    let updatingAutoRadius = false;
     let pillarImageUploadController = null;
     let loadedPresetName = "";
     let loadedPresetSettings = null;
@@ -2494,6 +2495,11 @@
         textImageActions.append(textImageButton, clearTextImageButton);
       }
       inp.addEventListener("input", () => {
+        // Turn off auto radius when manually adjusting radius.
+        if (u.k === "radius" && !updatingAutoRadius && CFG.autoRadius) {
+          CFG.autoRadius = false;
+          syncAutoRadiusControl();
+        }
         const value = ["text", "select", "color"].includes(u.type) ? inp.value
           : u.type === "bool" ? inp.checked : parseFloat(inp.value);
         CFG[u.k] = u.k === "repeat" ? Math.round(value) : value;
@@ -2654,8 +2660,13 @@
           })) * settings.repeat;
         }
         if (request !== autoRadiusRequest || !CFG.autoRadius) return;
-        inputs.radius.inp.value = Math.max(1, Math.min(Number(inputs.radius.inp.max) || 1024, Math.round(contentWidth / (2 * Math.PI))));
-        inputs.radius.inp.dispatchEvent(new Event("input", { bubbles: true }));
+        updatingAutoRadius = true;
+        try {
+          inputs.radius.inp.value = Math.max(1, Math.min(Number(inputs.radius.inp.max) || 1024, Math.round(contentWidth / (2 * Math.PI))));
+          inputs.radius.inp.dispatchEvent(new Event("input", { bubbles: true }));
+        } finally {
+          updatingAutoRadius = false;
+        }
       } catch (error) {
         if (request !== autoRadiusRequest) return;
         console.error("Could not set radius automatically", error);
