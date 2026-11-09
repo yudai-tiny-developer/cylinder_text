@@ -739,7 +739,7 @@
       { k: "borderColor", label: "Border color", category: "Colors", type: "color" },
       { k: "pillarColor", label: "Pillar color", category: "Colors", type: "color" },
       { k: "bgColor", label: "Background", category: "Colors", type: "color" },
-      { k: "radius", label: "Radius", category: "Motion and display", min: 1, max: 400, step: 1, rebuild: true },
+      { k: "radius", label: "Radius", category: "Motion and display", min: 1, max: 1024, step: 1, rebuild: true },
       { k: "autoRadius", label: "Auto radius", category: "Motion and display", type: "bool" },
       { k: "speed", label: "Rotation speed", category: "Motion and display", min: -180, max: 180, step: 1 },
       { k: "tiltX", label: "Tilt (front/back)", category: "Motion and display", min: -90, max: 90, step: 1 },
@@ -2203,7 +2203,7 @@
       return referenceDistance * Math.sqrt(cameraDistance ** 2 - radius ** 2)
         / Math.sqrt(referenceDistance ** 2 - radius ** 2);
     };
-    function getSceneLayout(settings, availableWidth, availableHeight) {
+    function getSceneLayout(settings) {
       const R = settings.radius, fs = settings.fontSize;
       const P = persp(settings);
       const focalLength = perspectiveFocalLength(settings);
@@ -2245,10 +2245,7 @@
           maxY = Math.max(maxY, projectedY);
         }
       }
-      return {
-        width, height, offsetY: (minY + maxY) / 2,
-        scale: Math.min(1, availableWidth / width, availableHeight / height)
-      };
+      return { width, height, offsetY: (minY + maxY) / 2 };
     }
 
     function getBorderImageDisplaySize(settings, image) {
@@ -2261,8 +2258,7 @@
     }
 
     function updateSceneSettings() {
-      const sceneBounds = scene.getBoundingClientRect();
-      sceneLayout = getSceneLayout(CFG, sceneBounds.width, sceneBounds.height);
+      sceneLayout = getSceneLayout(CFG);
       document.body.style.background = CFG.bgColor;
       if (webglRenderer) scheduleFrame();
     }
@@ -2293,10 +2289,10 @@
     function renderSceneFrame() {
       if (document.hidden || !webglRenderer) return;
       const bounds = scene.getBoundingClientRect();
-      const layout = sceneLayout || getSceneLayout(CFG, bounds.width, bounds.height);
+      const layout = sceneLayout || getSceneLayout(CFG);
       const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
       webglRenderer.resize(bounds.width, bounds.height, pixelRatio);
-      webglRenderer.render(CFG, spin, pixelRatio * layout.scale, -layout.offsetY);
+      webglRenderer.render(CFG, spin, pixelRatio, -layout.offsetY);
     }
 
     function scheduleFrame(continuing = false) {
@@ -2658,7 +2654,7 @@
           })) * settings.repeat;
         }
         if (request !== autoRadiusRequest || !CFG.autoRadius) return;
-        inputs.radius.inp.value = Math.max(1, Math.min(400, Math.round(contentWidth / (2 * Math.PI))));
+        inputs.radius.inp.value = Math.max(1, Math.min(Number(inputs.radius.inp.max) || 1024, Math.round(contentWidth / (2 * Math.PI))));
         inputs.radius.inp.dispatchEvent(new Event("input", { bubbles: true }));
       } catch (error) {
         if (request !== autoRadiusRequest) return;
@@ -3111,9 +3107,9 @@
 
     const yieldToBrowser = () => new Promise(resolve => setTimeout(resolve, 0));
 
-    async function drawExportFrame(pixelScale, sceneScale, offsetY, frameSpin, settings, signal, renderer) {
+    async function drawExportFrame(pixelScale, offsetY, frameSpin, settings, signal, renderer) {
       if (signal.aborted) throw new DOMException("Animated WebP export canceled", "AbortError");
-      renderer.render(settings, frameSpin, pixelScale * sceneScale, -offsetY);
+      renderer.render(settings, frameSpin, pixelScale, -offsetY);
       await yieldToBrowser();
       if (signal.aborted) throw new DOMException("Animated WebP export canceled", "AbortError");
     }
@@ -3160,7 +3156,6 @@
         phase: row.phase,
         chars: row.chars.map(({ text, a, image }) => ({ text, a, image }))
       }));
-      const { width: availableWidth, height: availableHeight } = scene.getBoundingClientRect();
       if (!HTMLCanvasElement.prototype.toBlob) {
         say("Animated WebP export is not supported by this browser", "error");
         return;
@@ -3196,11 +3191,10 @@
           await decodePillarImageSource(exportSettings.pillarImage);
         }
         checkCanceled();
-        const pixelScale = Math.min(2, maxDimension / Math.max(availableWidth, availableHeight));
-        const { width: sceneWidth, height: sceneHeight, offsetY, scale: sceneScale } =
-          getSceneLayout(exportSettings, availableWidth, availableHeight);
-        const width = Math.max(1, Math.round(sceneWidth * sceneScale * pixelScale));
-        const height = Math.max(1, Math.round(sceneHeight * sceneScale * pixelScale));
+        const { width: sceneWidth, height: sceneHeight, offsetY } = getSceneLayout(exportSettings);
+        const pixelScale = Math.min(2, maxDimension / Math.max(sceneWidth, sceneHeight));
+        const width = Math.max(1, Math.round(sceneWidth * pixelScale));
+        const height = Math.max(1, Math.round(sceneHeight * pixelScale));
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
@@ -3218,7 +3212,7 @@
           Math.round((i + 1) * periodMs / frameCount) - Math.round(i * periodMs / frameCount));
         for (let i = 0; i < frameCount; i++) {
           await exportRenderer.setAnimationTime(Math.round(i * periodMs / frameCount));
-          await drawExportFrame(pixelScale, sceneScale, offsetY,
+          await drawExportFrame(pixelScale, offsetY,
             startSpin + Math.sign(exportSettings.speed) * Math.PI * 2 * i / frameCount,
             exportSettings, controller.signal, exportRenderer);
           const blob = await new Promise((resolve, reject) => {
