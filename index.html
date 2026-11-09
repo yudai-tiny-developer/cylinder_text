@@ -609,7 +609,6 @@
       outline: 2px solid var(--accent);
       outline-offset: 2px;
     }
-
   </style>
 </head>
 
@@ -638,7 +637,7 @@
     const DEFAULTS = {
       text: "CYLINDER TEXT\nANIMATION",   // Multiple lines are allowed (one row per line).
       separator: "   ✦   ",   // Separator used when repeating the text.
-      repeat: true,           // Repeat the text until it fills the circumference.
+      repeat: 3,              // Number of text or image copies around the cylinder.
       radius: 220,            // Cylinder radius (px).
       fontSize: 40,           // Font size (px).
       letterSpacing: 0.1,     // Letter spacing (em).
@@ -693,7 +692,7 @@
       { k: "letterSpacing", label: "Letter spacing", category: "Text appearance", min: 0, max: 1, step: 0.01, rebuild: true },
       { k: "rowGap", label: "Row gap", category: "Text appearance", min: 0.8, max: 3, step: 0.05, rebuild: true },
       { k: "mirrorFront", label: "Mirror front side", category: "Text appearance", type: "bool", rebuild: true },
-      { k: "repeat", label: "Repeat", category: "Text appearance", type: "bool", rebuild: true },
+      { k: "repeat", label: "Repeat count", category: "Text appearance", min: 1, max: 10, step: 1, rebuild: true },
       {
         k: "borderMode", label: "Border", category: "Border", type: "select", rebuild: true, options: [
           { label: "No border", value: "none" },
@@ -756,14 +755,16 @@
       const settings = {};
       for (const u of UI) {
         if (!Object.prototype.hasOwnProperty.call(obj, u.k)) continue;
-        const v = obj[u.k];
+        let v = obj[u.k];
+        if (u.k === "repeat" && typeof v === "boolean") v = v ? DEFAULTS.repeat : 1;
         const valid = u.type === "bool" ? typeof v === "boolean"
           : u.type === "color" ? typeof v === "string" && /^#[\da-f]{6}$/i.test(v)
             : u.type === "select" ? typeof v === "string" && u.options.some(o => o.value === v)
               : u.type === "text" ? typeof v === "string"
                 : typeof v === "number" && Number.isFinite(v);
         if (!valid) return null;
-        settings[u.k] = v;
+        settings[u.k] = u.k === "repeat"
+          ? Math.round(Math.max(u.min, Math.min(u.max, v))) : v;
       }
       if (Object.prototype.hasOwnProperty.call(obj, "borderImage")) {
         if (typeof obj.borderImage !== "string"
@@ -828,7 +829,7 @@
       "Auto": "自動設定", "Set radius based on the current text or image": "現在の文字列または画像を基準に半径を設定",
       "Could not set radius automatically": "半径を自動設定できませんでした",
       "Row gap": "行の間隔", "Each line becomes one row": "1行が1段になります", "Repeat": "繰り返し", "Alternate direction per row": "行ごとに逆回転",
-      "Mirror front side": "鏡文字にする", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
+      "Repeat count": "繰り返し回数", "Mirror front side": "鏡文字にする", "Pause": "一時停止", "Reset to defaults": "初期値に戻す",
       "Load installed fonts": "インストール済みフォントを読込", "Loaded": "読み込み済み",
       "Couldn't access installed fonts": "フォント一覧を取得できませんでした",
       "Hold for 1 second, then release to reset": "1秒間押し続けて離すと初期値に戻します",
@@ -1132,7 +1133,9 @@
       const schema = UI.map(u => ({
         key: u.k,
         type: u.type || "number",
-        options: u.options?.map(option => option.value)
+        options: u.options?.map(option => option.value),
+        legacyBoolean: u.k === "repeat",
+        legacyTrueValue: DEFAULTS.repeat
       }));
       const workerSource = `
         self.onmessage = async ({ data: { file, schema } }) => {
@@ -1165,7 +1168,10 @@
             const settings = {};
             for (const field of schema) {
               if (!own(field.key)) continue;
-              const value = obj[field.key];
+              let value = obj[field.key];
+              if (field.legacyBoolean && typeof value === "boolean") {
+                value = value ? field.legacyTrueValue : 1;
+              }
               const valid = field.type === "bool" ? typeof value === "boolean"
                 : field.type === "color" ? typeof value === "string" && /^#[\\da-f]{6}$/i.test(value)
                   : field.type === "select" ? typeof value === "string" && field.options.includes(value)
@@ -1175,7 +1181,8 @@
                 self.postMessage({ type: "invalid" });
                 return;
               }
-              settings[field.key] = value;
+              settings[field.key] = field.key === "repeat" && typeof value === "number"
+                ? Math.max(1, Math.min(100, Math.round(value))) : value;
             }
             const imagePattern = /^data:image\\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/i;
             for (const key of ["borderImage", "image", "pillarImage"]) {
@@ -1311,8 +1318,8 @@
         ? (image.width || image.naturalWidth) / (image.height || image.naturalHeight) : 1;
       const circumference = 2 * Math.PI * settings.radius;
       const imageWidth = settings.fontSize * 3 * aspectRatio;
-      const count = settings.repeat ? Math.max(1, Math.round(circumference / imageWidth)) : 1;
-      const width = settings.repeat ? circumference / count : Math.min(circumference, imageWidth);
+      const count = settings.repeat;
+      const width = count > 1 ? circumference / count : Math.min(circumference, imageWidth);
       return { width, height: width / aspectRatio, count };
     }
 
@@ -2086,7 +2093,7 @@
         const unit = [];
         const widths = [];
         let unitW = 0;
-        const source = line === "" ? "" : line + (settings.repeat ? settings.separator : "");
+        const source = line === "" ? "" : line + (settings.repeat > 1 ? settings.separator : "");
         for (const ch of source) {
           unit.push(ch);
           const width = ctx.measureText(ch).width + ls * fs;
@@ -2105,7 +2112,7 @@
       }
       let maxUnitW = 0;
       for (const layout of lineLayouts) maxUnitW = Math.max(maxUnitW, layout.unitW);
-      const start = settings.repeat ? 0 : -maxUnitW / 2;
+      const start = settings.repeat > 1 ? 0 : -maxUnitW / 2;
       const C = 2 * Math.PI * R;
       const ys = [];
       const rowStep = imageMode ? fs * settings.rowGap : getRowStep(settings);
@@ -2133,8 +2140,8 @@
       } else for (let r = 0; r < lines.length; r++) {
         // Calculate character widths and repetitions for each line; empty lines remain empty rows.
         const { unit, widths, unitW } = lineLayouts[r];
-        const n = settings.repeat ? Math.max(1, Math.round(C / unitW)) : 1;
-        const k = settings.repeat ? C / (n * unitW) : 1;   // Adjust spacing to fit the circumference exactly.
+        const n = settings.repeat;
+        const k = n > 1 ? C / (n * unitW) : 1;   // Adjust spacing to fit the circumference exactly.
         const y = ys[r];
         const chars = [];
         let cum = start;
@@ -2491,7 +2498,10 @@
         textImageActions.append(textImageButton, clearTextImageButton);
       }
       inp.addEventListener("input", () => {
-        CFG[u.k] = ["text", "select", "color"].includes(u.type) ? inp.value : u.type === "bool" ? inp.checked : parseFloat(inp.value);
+        const value = ["text", "select", "color"].includes(u.type) ? inp.value
+          : u.type === "bool" ? inp.checked : parseFloat(inp.value);
+        CFG[u.k] = u.k === "repeat" ? Math.round(value) : value;
+        if (u.k === "repeat") inp.value = CFG[u.k];
         if (out && document.activeElement !== out) out.value = CFG[u.k];   // Do not overwrite the value while it is being edited.
         recordSettingsHistory();
         scheduleSettingsPersistence();
@@ -2512,7 +2522,9 @@
         out.addEventListener("input", () => {
           const v = parseFloat(out.value);
           if (!isFinite(v)) return;
-          inp.value = Math.min(u.max, Math.max(u.min, v));
+          inp.value = u.k === "repeat"
+            ? Math.round(Math.min(u.max, Math.max(u.min, v)))
+            : Math.min(u.max, Math.max(u.min, v));
           inp.dispatchEvent(new Event("input"));
         });
         out.addEventListener("change", () => { out.value = CFG[u.k]; });
@@ -2631,19 +2643,19 @@
           const image = decodedImageSource === settings.image && decodedImage
             ? decodedImage : await decodeImageSource(settings.image);
           const aspectRatio = (image.width || image.naturalWidth) / (image.height || image.naturalHeight);
-          contentWidth = settings.fontSize * 3 * aspectRatio;
+          contentWidth = settings.fontSize * 3 * aspectRatio * settings.repeat;
         } else {
           const spec = `${settings.fontWeight} ${settings.fontSize}px ${familyCss(settings.fontFamily)}`;
           if (document.fonts) await document.fonts.load(spec, settings.text + settings.separator).catch(() => { });
           ctx.font = spec;
           contentWidth = Math.max(1, ...settings.text.split("\n").map(line => {
-            const source = line === "" ? "" : line + (settings.repeat ? settings.separator : "");
+            const source = line === "" ? "" : line + (settings.repeat > 1 ? settings.separator : "");
             let width = 0;
             for (const character of source) {
               width += ctx.measureText(character).width + settings.letterSpacing * settings.fontSize;
             }
             return width || 1;
-          }));
+          })) * settings.repeat;
         }
         if (request !== autoRadiusRequest || !CFG.autoRadius) return;
         inputs.radius.inp.value = Math.max(1, Math.min(400, Math.round(contentWidth / (2 * Math.PI))));
@@ -2858,9 +2870,12 @@
     function applySettings(obj, recordHistory = true) {
       for (const u of UI) {
         let v = obj[u.k];
+        if (u.k === "repeat" && typeof v === "boolean") v = v ? DEFAULTS.repeat : 1;
         const t = u.type === "bool" ? "boolean" : ["text", "color", "select"].includes(u.type) ? "string" : "number";
         if (typeof v !== t || (t === "number" && !isFinite(v))) continue;   // Ignore invalid values.
-        if (t === "number") v = Math.min(u.max, Math.max(u.min, v));
+        if (t === "number") v = u.k === "repeat"
+          ? Math.round(Math.min(u.max, Math.max(u.min, v)))
+          : Math.min(u.max, Math.max(u.min, v));
         CFG[u.k] = v;
         if (u.k === "autoRadius") {
           syncAutoRadiusControl();
