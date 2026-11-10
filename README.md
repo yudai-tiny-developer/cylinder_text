@@ -17,6 +17,7 @@ A browser-based 3D text animation that wraps customizable text around a cylinder
 - Front/back tilt, side tilt, perspective, depth scaling, and opacity controls
 - Optional text repetition and custom separators
 - Optional image upload in place of text, mapped onto the cylinder surface
+- Optional back-side image support for text images, border images, and pillar images, with correct orientation on the reverse side
 - Animated GIF and WebP images continue playing when used in place of text or as image borders
 - Optional front-side mirroring with right-to-left text order and normally oriented back-side text
 - Pause/resume and reset-to-default controls
@@ -60,6 +61,8 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Pillar*
 | Border | Adds no border, a top-only, bottom-only, or top-and-bottom border around all rows or each row. |
 | Border style | Sets the border to dotted, dashed, solid, double, or repeated uploaded image panels that cover one full revolution. Image borders support PNG, JPEG, WebP, and GIF. |
 | Text image | Replaces the text with an uploaded PNG, JPEG, WebP, or GIF image. Animated GIF and WebP files retain their animation. |
+| Text back image | Adds an optional reverse-side image for the text image, shown when viewing the cylinder from the inside. |
+| Border back image | Adds an optional reverse-side image for image borders. |
 | Border width | Sets the border thickness from 0.5 to 96 pixels. |
 | Top spacing | Sets the gap between the text and the top border from 0 to 48 pixels. |
 | Bottom spacing | Sets the gap between the text and the bottom border from 0 to 48 pixels. |
@@ -70,6 +73,7 @@ Settings are grouped into **Text appearance**, **Colors**, **Border**, **Pillar*
 | Pillar vertical position | Moves the pillar up or down by up to 500 pixels; positive values move it down. |
 | Pillar color | Sets the pillar color when no image is selected. |
 | Pillar image | Adds an uploaded PNG, JPEG, WebP, or GIF image to the pillar. |
+| Pillar back image | Adds an optional reverse-side image for the pillar image, shown when viewing the reverse side of a flat pillar or inside of a wrapped pillar. |
 | Pillar image display | Wraps the image around the pillar, cropping it as needed to preserve its aspect ratio, or shows the full image as a flat panel fitted within the pillar dimensions. |
 | Rotate pillar | Chooses whether the center pillar spins on its own axis or remains at a fixed angle. |
 | Reverse rotation | Reverses the pillar's self-rotation direction relative to the text. Shown when pillar rotation is enabled. |
