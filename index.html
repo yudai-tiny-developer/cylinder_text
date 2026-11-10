@@ -2027,8 +2027,10 @@
         image: row.chars.some(character => character.image)
       }));
       const ys = rows.map(row => row.y);
+      const imageBorderSize = borderImage ? getBorderImageDisplaySize(settings, borderImage) : null;
       const borderRows = [];
-      if (settings.borderMode !== "none" && settings.borderWidth > 0 && ys.length) {
+      if (settings.borderMode !== "none" && settings.borderWidth > 0 && ys.length
+        && (settings.borderStyle !== "image" || imageBorderSize)) {
         const topOffset = rowHalfHeight + settings.borderTopSpacing;
         const bottomOffset = rowHalfHeight + settings.borderBottomSpacing;
         const allRows = ["all", "allTop", "allBottom"].includes(settings.borderMode);
@@ -2044,7 +2046,6 @@
           }
         }
       }
-      const imageBorderSize = borderImage ? getBorderImageDisplaySize(settings, borderImage) : null;
       const borderHalfHeights = borderRows.map(() =>
         imageBorderSize && settings.borderStyle === "image" ? imageBorderSize.height / 2
           : settings.borderWidth * (settings.borderStyle === "double" ? 1.25 : 0.5));
@@ -2538,9 +2539,10 @@
       const tiltX = settings.tiltX * Math.PI / 180;
       const cosX = Math.cos(tiltX), sinX = Math.sin(tiltX);
       const cosZ = Math.cos(tiltZ), sinZ = Math.sin(tiltZ);
-      const bordersEnabled = settings.borderMode !== "none" && settings.borderWidth > 0;
+      const bordersEnabled = settings.borderMode !== "none" && settings.borderWidth > 0
+        && (settings.borderStyle !== "image" || Boolean(settings.borderImage && decodedBorderImage));
       const borderHalfHeight = !bordersEnabled ? 0
-        : settings.borderStyle === "image" && settings.borderImage && decodedBorderImage
+        : settings.borderStyle === "image"
           ? getBorderImageDisplaySize(settings, decodedBorderImage).height / 2
           : settings.borderWidth * (settings.borderStyle === "double" ? 1.25 : 0.5);
       const hasTopBorder = bordersEnabled && !["allBottom", "rowsBottom"].includes(settings.borderMode);
@@ -2742,6 +2744,8 @@
             CFG.borderImage = await readImageFile(file, borderImageUploadController.signal,
               (phase, loaded, total) => uploadProgress.update(phase, loaded, total));
             await decodeBorderImageSource(CFG.borderImage);
+            CFG.borderStyle = "image";
+            inputs.borderStyle.inp.value = CFG.borderStyle;
             syncBorderControls();
             recordSettingsHistory(true);
             scheduleSettingsPersistence();
@@ -2792,6 +2796,8 @@
             CFG.borderBackImage = await readImageFile(file, borderBackUploadController.signal,
               (phase, loaded, total) => borderBackProgress.update(phase, loaded, total));
             await decodeBorderBackImageSource(CFG.borderBackImage);
+            CFG.borderStyle = "image";
+            inputs.borderStyle.inp.value = CFG.borderStyle;
             syncBorderControls();
             recordSettingsHistory(true);
             scheduleSettingsPersistence();
