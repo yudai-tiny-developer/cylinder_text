@@ -240,10 +240,17 @@
 
     .text-image-actions {
       display: grid;
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 4px;
     }
 
     .text-image-actions button {
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
       padding: 4px 6px;
       border: 1px solid var(--line);
       border-radius: 6px;
@@ -251,8 +258,12 @@
       color: var(--ink);
       font: inherit;
       font-size: 12px;
-      white-space: nowrap;
+      white-space: normal;
       cursor: pointer;
+    }
+
+    .f.border-style-field > .text-image-actions {
+      grid-column: 2 / -1;
     }
 
     .file-load-progress {
